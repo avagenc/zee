@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/avagenc/agentic-tuya-smart/internal/models"
 	"github.com/avagenc/agentic-tuya-smart/internal/services"
@@ -11,13 +12,28 @@ import (
 
 type DeviceHandler struct {
 	deviceService *services.DeviceService
+	APIPrefix     string
 }
 
-func NewDeviceHandler(deviceService *services.DeviceService) *DeviceHandler {
-	return &DeviceHandler{deviceService: deviceService}
+func NewDeviceHandler(deviceService *services.DeviceService, apiPrefix string) *DeviceHandler {
+	return &DeviceHandler{
+		deviceService: deviceService,
+		APIPrefix:     apiPrefix,
+	}
 }
 
-func (h *DeviceHandler) HandleDeviceCommands(w http.ResponseWriter, r *http.Request) {
+func (h *DeviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	subPath := strings.TrimPrefix(r.URL.Path, h.APIPrefix+"/devices/")
+
+	switch subPath {
+	case "commands":
+		h.handleCommands(w, r)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+func (h *DeviceHandler) handleCommands(w http.ResponseWriter, r *http.Request) {
 	const action = "Send Device Commands"
 
 	if r.Method != http.MethodPost {

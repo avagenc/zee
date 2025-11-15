@@ -3,12 +3,20 @@ package main
 import (
 	"log"
 	"net/http"
+	"strings"
 
+	"github.com/avagenc/agentic-tuya-smart/internal/clients/tuya"
 	"github.com/avagenc/agentic-tuya-smart/internal/config"
 	"github.com/avagenc/agentic-tuya-smart/internal/handlers"
 	"github.com/avagenc/agentic-tuya-smart/internal/middleware"
 	"github.com/avagenc/agentic-tuya-smart/internal/services"
-	"github.com/avagenc/agentic-tuya-smart/internal/clients/tuya"
+)
+
+const version = "0.2.1"
+
+var (
+	versionMajor = strings.Split(version, ".")[0]
+	APIPrefix    = "/v" + versionMajor
 )
 
 func main() {
@@ -30,8 +38,9 @@ func main() {
 	deviceService := services.NewDeviceService(tuyaClient)
 
 	// 3. Create Handlers
-	deviceHandler := handlers.NewDeviceHandler(deviceService)
-	homeHandler := handlers.NewHomeHandler(deviceService)
+	deviceHandler := handlers.NewDeviceHandler(deviceService, APIPrefix)
+	homeHandler := handlers.NewHomeHandler(deviceService, APIPrefix)
+	rootHandler := handlers.NewRootHandler(version)
 
 	// 4. Create Middleware Authenticator
 	authenticator := middleware.NewAuthenticator(cfg.AvagencAPIKey)
@@ -39,12 +48,13 @@ func main() {
 	// --- Register Routes ---
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", handlers.RootHandler)
-	mux.Handle("/v0.1/devices/commands", authenticator.Middleware(http.HandlerFunc(deviceHandler.HandleDeviceCommands)))
-	mux.Handle("/v0.1/homes/devices", authenticator.Middleware(http.HandlerFunc(homeHandler.HandleGetHomeDevices)))
+	mux.Handle("/", rootHandler)
+	mux.Handle(APIPrefix+"/devices/", authenticator.Middleware(deviceHandler))
+	mux.Handle(APIPrefix+"/homes/", authenticator.Middleware(homeHandler))
 
 	// --- Start Server ---
-	log.Printf("Starting Avagenc Tuya IoT Service on port %s\n", cfg.Port)
+	log.Printf("In the name of Allah, the Most Gracious, the Most Merciful")
+	log.Printf("Starting Avagenc Agentic Tuya Smart on port %s\n", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, mux); err != nil {
 		log.Fatalf("FATAL: Failed to start server: %v", err)
 	}

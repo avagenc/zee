@@ -4,7 +4,15 @@ import (
 	"net/http"
 )
 
-func RootHandler(w http.ResponseWriter, r *http.Request) {
+type RootHandler struct {
+	Version string
+}
+
+func NewRootHandler(version string) *RootHandler {
+	return &RootHandler{Version: version}
+}
+
+func (h *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	const action = "Health Check"
 
 	if r.URL.Path != "/" {
@@ -23,7 +31,7 @@ func RootHandler(w http.ResponseWriter, r *http.Request) {
 		Status  string `json:"status"`
 	}{
 		Service: "avagenc-agentic-tuya-smart",
-		Version: "0.1.0",
+		Version: h.Version,
 		Status:  "ok",
 	}
 

@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  agentic-tuya-smart:
+    image: ibn-fadl/avagenc-agentic-tuya-smart:latest
+    container_name: agentic-tuya-smart
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

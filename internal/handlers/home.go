@@ -9,13 +9,26 @@ import (
 
 type HomeHandler struct {
 	deviceService *services.DeviceService
+	APIPrefix     string
 }
 
-func NewHomeHandler(deviceService *services.DeviceService) *HomeHandler {
-	return &HomeHandler{deviceService: deviceService}
+func NewHomeHandler(deviceService *services.DeviceService, apiPrefix string) *HomeHandler {
+	return &HomeHandler{deviceService: deviceService, APIPrefix: apiPrefix}
 }
 
-func (h *HomeHandler) HandleGetHomeDevices(w http.ResponseWriter, r *http.Request) {
+func (h *HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	trimmedPath := strings.TrimPrefix(r.URL.Path, h.APIPrefix+"/homes/")
+	pathSegments := strings.Split(trimmedPath, "/")
+
+	if len(pathSegments) == 2 && pathSegments[1] == "devices" {
+		homeID := pathSegments[0]
+		h.handleGetHomeDevices(w, r, homeID)
+	} else {
+		http.NotFound(w, r)
+	}
+}
+
+func (h *HomeHandler) handleGetHomeDevices(w http.ResponseWriter, r *http.Request, homeID string) {
 	const action = "Get Home Devices"
 
 	if r.Method != http.MethodGet {
@@ -23,9 +36,8 @@ func (h *HomeHandler) HandleGetHomeDevices(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	homeID := strings.TrimSpace(r.URL.Query().Get("homeId"))
 	if homeID == "" {
-		writeErrorResponse(w, http.StatusBadRequest, "missing homeId", action)
+		writeErrorResponse(w, http.StatusBadRequest, "missing homeId in path", action)
 		return
 	}
 

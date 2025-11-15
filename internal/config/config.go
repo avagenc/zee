@@ -8,7 +8,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config holds all application configuration.
 type Config struct {
 	Port             string
 	AvagencAPIKey    string
@@ -17,7 +16,6 @@ type Config struct {
 	TuyaBaseURL      string
 }
 
-// NewConfig reads configuration from environment variables.
 func NewConfig() (*Config, error) {
 	err := godotenv.Load()
 	if err != nil {
