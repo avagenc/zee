@@ -9,24 +9,22 @@ import (
 )
 
 const (
-	tuyaDevicesEndpoint    = "/v1.0/devices"
-	tuyaCloudThingEndpoint = "/v2.0/cloud/thing"
-	tuyaHomeEndpoint       = "/v1.0/homes"
+	devicesEndpoint    = "/v1.0/devices"
+	cloudThingEndpoint = "/v2.0/cloud/thing"
+	homeEndpoint       = "/v1.0/homes"
 )
 
 func (c *Client) QueryProperties(deviceID string) (*models.TuyaResponse, error) {
-	path := fmt.Sprintf("%s/%s/shadow/properties", tuyaCloudThingEndpoint, deviceID)
+	path := fmt.Sprintf("%s/%s/shadow/properties", cloudThingEndpoint, deviceID)
 	tuyaReq := models.TuyaRequest{
 		Method:  http.MethodGet,
 		URLPath: path,
-		Body:    "",
 	}
-	return c.doRequest(tuyaReq)
+	return c.doIoTRequest(tuyaReq)
 }
 
 func (c *Client) SendCommands(deviceID string, commands []models.TuyaDataPoint) (*models.TuyaResponse, error) {
-	path := fmt.Sprintf("%s/%s/commands", tuyaDevicesEndpoint, deviceID)
-
+	path := fmt.Sprintf("%s/%s/commands", devicesEndpoint, deviceID)
 	bodyBytes, err := json.Marshal(struct {
 		Commands []models.TuyaDataPoint `json:"commands"`
 	}{
@@ -41,25 +39,23 @@ func (c *Client) SendCommands(deviceID string, commands []models.TuyaDataPoint) 
 		URLPath: path,
 		Body:    string(bodyBytes),
 	}
-	return c.doRequest(tuyaReq)
+	return c.doIoTRequest(tuyaReq)
 }
 
 func (c *Client) GetMultiChannelName(deviceID string) (*models.TuyaResponse, error) {
-	path := fmt.Sprintf("%s/%s/multiple-names", tuyaDevicesEndpoint, deviceID)
+	path := fmt.Sprintf("%s/%s/multiple-names", devicesEndpoint, deviceID)
 	tuyaReq := models.TuyaRequest{
 		Method:  http.MethodGet,
 		URLPath: path,
-		Body:    "",
 	}
-	return c.doRequest(tuyaReq)
+	return c.doIoTRequest(tuyaReq)
 }
 
 func (c *Client) QueryDevicesInHome(homeID string) (*models.TuyaResponse, error) {
-	path := fmt.Sprintf("%s/%s/devices", tuyaHomeEndpoint, homeID)
+	path := fmt.Sprintf("%s/%s/devices", homeEndpoint, homeID)
 	tuyaReq := models.TuyaRequest{
 		Method:  http.MethodGet,
 		URLPath: path,
-		Body:    "",
 	}
-	return c.doRequest(tuyaReq)
+	return c.doIoTRequest(tuyaReq)
 }

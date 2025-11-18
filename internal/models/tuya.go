@@ -53,6 +53,6 @@ type TuyaSignature struct {
 type TuyaToken struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
-	ExpireTime   int    `json:"expire_time"`
+	ExpireTime   int64  `json:"expire_time"`
 	UID          string `json:"uid"`
 }

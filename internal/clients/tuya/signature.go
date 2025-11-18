@@ -13,7 +13,7 @@ import (
 	"github.com/avagenc/agentic-tuya-smart/internal/models"
 )
 
-func (c *Client) generateSignature(accessID string, accessSecret string, accessToken string, req models.TuyaRequest) (*models.TuyaSignature, error) {
+func generateSignature(accessID, accessSecret, accessToken string, req models.TuyaRequest) (*models.TuyaSignature, error) {
 	timestamp := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
 
 	hash := sha256.New()
@@ -39,6 +39,5 @@ func (c *Client) generateSignature(accessID string, accessSecret string, accessT
 		Timestamp:   timestamp,
 		Nonce:       nonce,
 		SignMethod:  "HMAC-SHA256",
-		AccessToken: accessToken,
 	}, nil
 }
