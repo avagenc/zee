@@ -54,7 +54,7 @@ func main() {
 
 	// --- Start Server ---
 	log.Printf("In the name of Allah, the Most Gracious, the Most Merciful")
-	log.Printf("Starting Avagenc Agentic Tuya Smart on port %s\n", cfg.Port)
+	log.Printf("Starting Avagenc Agentic Tuya Smart API on port %s\n", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, mux); err != nil {
 		log.Fatalf("FATAL: Failed to start server: %v", err)
 	}

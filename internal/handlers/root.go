@@ -30,7 +30,7 @@ func (h *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Version string `json:"version"`
 		Status  string `json:"status"`
 	}{
-		Service: "avagenc-agentic-tuya-smart",
+		Service: "avagenc-agentic-tuya-smart-api",
 		Version: h.Version,
 		Status:  "ok",
 	}
