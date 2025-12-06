@@ -42,7 +42,7 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           region: ${{ env.REGION }}
-          flags: '--allow-unauthenticated --memory=128Mi --cpu=1 --min-instances=1 --max-instances=2 --cpu-boost'
+          flags: '--allow-unauthenticated --memory=128Mi --cpu=1 --min-instances=1 --max-instances=2 --cpu-boost --execution-environment=gen2'
 
           env_vars: |
             TUYA_BASE_URL=https://openapi.tuyaus.com
@@ -51,3 +51,10 @@ jobs:
             TUYA_ACCESS_ID=TUYA_ACCESS_ID:latest
             TUYA_ACCESS_SECRET=TUYA_ACCESS_SECRET:latest
             AVAGENC_API_KEY=AVAGENC_API_KEY:latest
+
+      - name: Make Service Public
+        run: |
+          gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --member="allUsers" \
+            --role="roles/run.invoker"
