@@ -53,7 +53,7 @@ func main() {
 	mux.Handle(APIPrefix+"/homes/", authenticator.Middleware(homeHandler))
 
 	// --- Start Server ---
-	log.Printf("بِسْــــــــــــــــــمِ اللهِ الرَّحْمَنِ الرَّحِيْمِ")
+	log.Printf("In the name of Allah, The Most Compassionate, The Most Merciful")
 	log.Printf("Starting Avagenc Agentic Tuya Smart API on port %s\n", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, mux); err != nil {
 		log.Fatalf("FATAL: Failed to start server: %v", err)
