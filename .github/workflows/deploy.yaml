@@ -1,23 +1,33 @@
-name: Deploy to Production
+name: Deploy
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "dev"]
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: asia-southeast1
   REPO_NAME: docker
-  SERVICE_NAME: agentic-tuya-smart-api
-  IMAGE_NAME: agentic-tuya-smart-api
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Set Environment Variables
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "SERVICE_NAME=agentic-tuya-smart-api" >> $GITHUB_ENV
+            echo "IMAGE_NAME=agentic-tuya-smart-api" >> $GITHUB_ENV
+          else
+            echo "SERVICE_NAME=agentic-tuya-smart-api-dev" >> $GITHUB_ENV
+            echo "IMAGE_NAME=agentic-tuya-smart-api-dev" >> $GITHUB_ENV
+          fi
 
       - name: Google Auth
         uses: google-github-actions/auth@v2
@@ -44,11 +54,14 @@ jobs:
           region: ${{ env.REGION }}
           flags: "--allow-unauthenticated --memory=128Mi --cpu=1 --min-instances=0 --max-instances=1 --cpu-boost"
           env_vars: |
+            APP_ENV=${{ vars.APP_ENV }}
             TUYA_BASE_URL=https://openapi.tuyaus.com
+            PORT="8080"
+            TUYA_ACCESS_ID=${{ secrets.TUYA_ACCESS_ID }}
+            TUYA_ACCESS_SECRET=${{ secrets.TUYA_ACCESS_SECRET }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
           secrets: |
-            TUYA_ACCESS_ID=TUYA_ACCESS_ID:latest
-            TUYA_ACCESS_SECRET=TUYA_ACCESS_SECRET:latest
-            AVAGENC_API_KEY=AVAGENC_API_KEY:latest
+            API_KEY=PI_KEY:latest
 
       - name: Make Service Public
         run: |
