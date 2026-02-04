@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/avagenc/zee-api/internal/clients/tuya"
+	"github.com/avagenc/zee-api/internal/tuya"
 	"github.com/avagenc/zee-api/internal/config"
 	"github.com/avagenc/zee-api/internal/handlers"
 	"github.com/avagenc/zee-api/internal/middleware"
@@ -59,7 +59,7 @@ func main() {
 		log.Fatalf("FATAL: Schema validation failed: %v", err)
 	}
 
-	tuyaClient, err := tuya.NewClient(tuyaCfg.AccessID, tuyaCfg.AccessSecret, tuyaCfg.BaseURL)
+	tuyaClient, err := tuya.NewClient(tuyaCfg)
 	if err != nil {
 		log.Fatalf("FATAL: Failed to create Tuya client: %v", err)
 	}

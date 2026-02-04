@@ -1,20 +1,20 @@
-package models
+package tuya
 
 import (
 	 "encoding/json"
 )
 
-type TuyaDataPoint struct {
+type DataPoint struct {
 	Code  string `json:"code"`
 	Value any    `json:"value"`
 }
 
-type TuyaChannel struct {
+type Channel struct {
 	Identifier string `json:"identifier"`
 	Name       string `json:"name"`
 }
 
-type TuyaDeviceProperty struct {
+type DeviceProperty struct {
 	Code       string `json:"code"`
 	CustomName string `json:"custom_name"`
 	DPID       int    `json:"dp_id"`
@@ -23,7 +23,7 @@ type TuyaDeviceProperty struct {
 	Value      any    `json:"value"`
 }
 
-type TuyaResponse struct {
+type Response struct {
 	Success bool   `json:"success"`
 	T       int64  `json:"t"`
 	Tid     string `json:"tid"`
@@ -36,13 +36,13 @@ type TuyaResponse struct {
 	Msg  string `json:"msg,omitempty"`
 }
 
-type TuyaRequest struct {
+type Request struct {
 	Method  string `json:"method"`
 	URLPath string `json:"url_path"`
 	Body    string `json:"body,omitempty"`
 }
 
-type TuyaSignature struct {
+type Signature struct {
 	Sign        string `json:"sign"`
 	Timestamp   string `json:"t"`
 	Nonce       string `json:"nonce"`
@@ -50,7 +50,7 @@ type TuyaSignature struct {
 	AccessToken string `json:"access_token"`
 }
 
-type TuyaToken struct {
+type Token struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpireTime   int64  `json:"expire_time"`

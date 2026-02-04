@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avagenc/zee-api/internal/models"
+	
 )
 
 const (
@@ -28,7 +28,7 @@ type Client struct {
 	accessSecret string
 	baseURL      string
 	httpClient   *http.Client
-	token        *models.TuyaToken
+	token        *Token
 	tokenLock    sync.RWMutex
 }
 
@@ -38,7 +38,7 @@ func NewClient(cfg *Config) (*Client, error) {
 		accessSecret: cfg.AccessSecret,
 		baseURL:      cfg.BaseURL,
 		httpClient:   &http.Client{Timeout: 10 * time.Second},
-		token:        &models.TuyaToken{},
+		token:        &Token{},
 		tokenLock:    sync.RWMutex{},
 	}
 
@@ -49,7 +49,7 @@ func NewClient(cfg *Config) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) doIoTRequest(req models.TuyaRequest) (*models.TuyaResponse, error) {
+func (c *Client) doIoTRequest(req Request) (*Response, error) {
 	for attempt := 0; attempt < maxIoTRequestAttempts; attempt++ {
 		fullURL := c.baseURL + req.URLPath
 
@@ -97,7 +97,7 @@ func (c *Client) doIoTRequest(req models.TuyaRequest) (*models.TuyaResponse, err
 			return nil, fmt.Errorf("request to %s returned non-200 status code: %d, body: %s", fullURL, resp.StatusCode, string(respBodyBytes))
 		}
 
-		var tuyaResponse models.TuyaResponse
+		var tuyaResponse Response
 		if err := json.Unmarshal(respBodyBytes, &tuyaResponse); err != nil {
 			return nil, fmt.Errorf("failed to decode response from %s: %w", fullURL, err)
 		}
@@ -119,7 +119,7 @@ func (c *Client) doIoTRequest(req models.TuyaRequest) (*models.TuyaResponse, err
 	return nil, fmt.Errorf("failed to execute request to %s after retrying with a refreshed token", req.URLPath)
 }
 
-func (c *Client) doTokenRequest(req models.TuyaRequest) (*models.TuyaResponse, error) {
+func (c *Client) doTokenRequest(req Request) (*Response, error) {
 	fullURL := c.baseURL + req.URLPath
 
 	signature, err := generateSignature(c.accessID, c.accessSecret, "", req)
@@ -154,7 +154,7 @@ func (c *Client) doTokenRequest(req models.TuyaRequest) (*models.TuyaResponse, e
 		return nil, fmt.Errorf("token request to %s returned non-200 status code: %d, body: %s", fullURL, resp.StatusCode, string(respBodyBytes))
 	}
 
-	var tuyaResponse models.TuyaResponse
+	var tuyaResponse Response
 	if err := json.Unmarshal(respBodyBytes, &tuyaResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode token response from %s: %w", fullURL, err)
 	}
@@ -172,7 +172,7 @@ func (c *Client) updateToken() error {
 		return fmt.Errorf("Tuya token request failed with code %d: %s", resp.Code, resp.Msg)
 	}
 
-	var newToken models.TuyaToken
+	var newToken Token
 	if err := json.Unmarshal(resp.Result, &newToken); err != nil {
 		return fmt.Errorf("failed to unmarshal token result: %w", err)
 	}

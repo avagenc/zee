@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/avagenc/zee-api/internal/models"
-	"github.com/avagenc/zee-api/internal/clients/tuya"
+	"github.com/avagenc/zee-api/internal/tuya"
 )
 
 type DeviceService struct {
@@ -18,7 +18,7 @@ func NewDeviceService(tuyaClient *tuya.Client) *DeviceService {
 	return &DeviceService{tuyaClient: tuyaClient}
 }
 
-func (s *DeviceService) SendCommands(deviceID string, commands []models.TuyaDataPoint) (json.RawMessage, error) {
+func (s *DeviceService) SendCommands(deviceID string, commands []tuya.DataPoint) (json.RawMessage, error) {
 	resp, err := s.tuyaClient.SendCommands(deviceID, commands)
 	if err != nil {
 		return nil, fmt.Errorf("tuya client failed to send commands: %w", err)
@@ -49,7 +49,7 @@ func (s *DeviceService) GetAllByHomeId(homeID string) ([]models.Device, error) {
 		device := &devices[i]
 		category := strings.ToLower(device.Category)
 
-		device.CodeNameMapping = []models.TuyaChannel{}
+		device.CodeNameMapping = []tuya.Channel{}
 
 		if (category == "kg" || strings.HasPrefix(category, "cz")) && device.DeviceID != "" {
 			devicesToEnrich = append(devicesToEnrich, device)
@@ -80,7 +80,7 @@ func (s *DeviceService) enrichWithChannelNames(devicesToEnrich []*models.Device)
 				return
 			}
 
-			var multiChannelNames []models.TuyaChannel
+			var multiChannelNames []tuya.Channel
 			if len(resp.Result) > 0 {
 				if err := json.Unmarshal(resp.Result, &multiChannelNames); err != nil {
 					errs <- fmt.Errorf("failed to decode channel names for device %s: %w", device.DeviceID, err)

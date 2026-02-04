@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/avagenc/zee-api/internal/models"
+	
 )
 
 const (
@@ -14,19 +14,19 @@ const (
 	homeEndpoint       = "/v1.0/homes"
 )
 
-func (c *Client) QueryProperties(deviceID string) (*models.TuyaResponse, error) {
+func (c *Client) QueryProperties(deviceID string) (*Response, error) {
 	path := fmt.Sprintf("%s/%s/shadow/properties", cloudThingEndpoint, deviceID)
-	tuyaReq := models.TuyaRequest{
+	tuyaReq := Request{
 		Method:  http.MethodGet,
 		URLPath: path,
 	}
 	return c.doIoTRequest(tuyaReq)
 }
 
-func (c *Client) SendCommands(deviceID string, commands []models.TuyaDataPoint) (*models.TuyaResponse, error) {
+func (c *Client) SendCommands(deviceID string, commands []DataPoint) (*Response, error) {
 	path := fmt.Sprintf("%s/%s/commands", devicesEndpoint, deviceID)
 	bodyBytes, err := json.Marshal(struct {
-		Commands []models.TuyaDataPoint `json:"commands"`
+		Commands []DataPoint `json:"commands"`
 	}{
 		Commands: commands,
 	})
@@ -34,7 +34,7 @@ func (c *Client) SendCommands(deviceID string, commands []models.TuyaDataPoint) 
 		return nil, fmt.Errorf("failed to marshal command payload: %w", err)
 	}
 
-	tuyaReq := models.TuyaRequest{
+	tuyaReq := Request{
 		Method:  http.MethodPost,
 		URLPath: path,
 		Body:    string(bodyBytes),
@@ -42,18 +42,18 @@ func (c *Client) SendCommands(deviceID string, commands []models.TuyaDataPoint) 
 	return c.doIoTRequest(tuyaReq)
 }
 
-func (c *Client) GetMultiChannelName(deviceID string) (*models.TuyaResponse, error) {
+func (c *Client) GetMultiChannelName(deviceID string) (*Response, error) {
 	path := fmt.Sprintf("%s/%s/multiple-names", devicesEndpoint, deviceID)
-	tuyaReq := models.TuyaRequest{
+	tuyaReq := Request{
 		Method:  http.MethodGet,
 		URLPath: path,
 	}
 	return c.doIoTRequest(tuyaReq)
 }
 
-func (c *Client) QueryDevicesInHome(homeID string) (*models.TuyaResponse, error) {
+func (c *Client) QueryDevicesInHome(homeID string) (*Response, error) {
 	path := fmt.Sprintf("%s/%s/devices", homeEndpoint, homeID)
-	tuyaReq := models.TuyaRequest{
+	tuyaReq := Request{
 		Method:  http.MethodGet,
 		URLPath: path,
 	}

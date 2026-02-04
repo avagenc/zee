@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/avagenc/zee-api/internal/models"
+	
 )
 
-func generateSignature(accessID, accessSecret, accessToken string, req models.TuyaRequest) (*models.TuyaSignature, error) {
+func generateSignature(accessID, accessSecret, accessToken string, req Request) (*Signature, error) {
 	timestamp := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
 
 	hash := sha256.New()
@@ -34,10 +34,10 @@ func generateSignature(accessID, accessSecret, accessToken string, req models.Tu
 	mac.Write([]byte(tuyaStr))
 	sign := strings.ToUpper(hex.EncodeToString(mac.Sum(nil)))
 
-	return &models.TuyaSignature{
-		Sign:        sign,
-		Timestamp:   timestamp,
-		Nonce:       nonce,
-		SignMethod:  "HMAC-SHA256",
+	return &Signature{
+		Sign:       sign,
+		Timestamp:  timestamp,
+		Nonce:      nonce,
+		SignMethod: "HMAC-SHA256",
 	}, nil
 }
