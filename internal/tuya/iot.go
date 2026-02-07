@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	devicesEndpoint    = "/v1.0/devices"
+	devicesEndpoint    = "/v1.0/iot-03/devices"
 	cloudThingEndpoint = "/v2.0/cloud/thing"
 	homeEndpoint       = "/v1.0/homes"
 	userEndpoint       = "/v1.0/users"
