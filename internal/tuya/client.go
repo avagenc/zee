@@ -15,13 +15,7 @@ const (
 	maxIoTRequestAttempts     = 2
 )
 
-type Request struct {
-	Method  string `json:"method"`
-	URLPath string `json:"url_path"`
-	Body    string `json:"body,omitempty"`
-}
-
-type Response struct {
+type response struct {
 	Success bool   `json:"success"`
 	T       int64  `json:"t"`
 	Tid     string `json:"tid"`
@@ -58,9 +52,9 @@ func NewClient(accessID, accessSecret, baseURL string) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) doIoTRequest(req Request) (*Response, error) {
+func (c *Client) Do(method, path string, body []byte) (json.RawMessage, error) {
 	for attempt := 0; attempt < maxIoTRequestAttempts; attempt++ {
-		fullURL := c.baseURL + req.URLPath
+		fullURL := c.baseURL + path
 
 		var accessToken string
 		c.tokenLock.RLock()
@@ -69,19 +63,18 @@ func (c *Client) doIoTRequest(req Request) (*Response, error) {
 		}
 		c.tokenLock.RUnlock()
 
-		signature, err := generateSignature(c.accessID, c.accessSecret, accessToken, req)
+		signature, err := generateSignature(c.accessID, c.accessSecret, accessToken, method, path, body)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate signature: %w", err)
 		}
 
-		bodyBytes := []byte(req.Body)
-		bodyReader := bytes.NewReader(bodyBytes)
-		httpReq, err := http.NewRequest(req.Method, fullURL, bodyReader)
+		bodyReader := bytes.NewReader(body)
+		httpReq, err := http.NewRequest(method, fullURL, bodyReader)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create request to %s: %w", fullURL, err)
 		}
 
-		if len(bodyBytes) > 0 {
+		if len(body) > 0 {
 			httpReq.Header.Set("Content-Type", "application/json")
 		}
 		httpReq.Header.Set("client_id", c.accessID)
@@ -106,37 +99,37 @@ func (c *Client) doIoTRequest(req Request) (*Response, error) {
 			return nil, fmt.Errorf("request to %s returned non-200 status code: %d, body: %s", fullURL, resp.StatusCode, string(respBodyBytes))
 		}
 
-		var tuyaResponse Response
-		if err := json.Unmarshal(respBodyBytes, &tuyaResponse); err != nil {
+		var tuyaResp response
+		if err := json.Unmarshal(respBodyBytes, &tuyaResp); err != nil {
 			return nil, fmt.Errorf("failed to decode response from %s: %w", fullURL, err)
 		}
 
-		if tuyaResponse.Success {
-			return &tuyaResponse, nil
+		if tuyaResp.Success {
+			return tuyaResp.Result, nil
 		}
 
-		if tuyaResponse.Code == tokenExpiredTuyaErrorCode && attempt == 0 {
+		if tuyaResp.Code == tokenExpiredTuyaErrorCode && attempt == 0 {
 			if err := c.ensureValidToken(); err != nil {
-				return nil, fmt.Errorf("failed to refresh token after Tuya error %d: %w", tuyaResponse.Code, err)
+				return nil, fmt.Errorf("failed to refresh token after Tuya error %d: %w", tuyaResp.Code, err)
 			}
 			continue
 		}
 
-		return nil, fmt.Errorf("tuya api error %d: %s", tuyaResponse.Code, tuyaResponse.Msg)
+		return nil, fmt.Errorf("tuya api error %d: %s", tuyaResp.Code, tuyaResp.Msg)
 	}
 
-	return nil, fmt.Errorf("failed to execute request to %s after retrying with a refreshed token", req.URLPath)
+	return nil, fmt.Errorf("failed to execute request to %s after retrying with a refreshed token", path)
 }
 
-func (c *Client) doTokenRequest(req Request) (*Response, error) {
-	fullURL := c.baseURL + req.URLPath
+func (c *Client) doTokenRequest(method, path string) (*response, error) {
+	fullURL := c.baseURL + path
 
-	signature, err := generateSignature(c.accessID, c.accessSecret, "", req)
+	signature, err := generateSignature(c.accessID, c.accessSecret, "", method, path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token signature: %w", err)
 	}
 
-	httpReq, err := http.NewRequest(req.Method, fullURL, nil)
+	httpReq, err := http.NewRequest(method, fullURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token request to %s: %w", fullURL, err)
 	}
@@ -163,12 +156,12 @@ func (c *Client) doTokenRequest(req Request) (*Response, error) {
 		return nil, fmt.Errorf("token request to %s returned non-200 status code: %d, body: %s", fullURL, resp.StatusCode, string(respBodyBytes))
 	}
 
-	var tuyaResponse Response
-	if err := json.Unmarshal(respBodyBytes, &tuyaResponse); err != nil {
+	var tuyaResp response
+	if err := json.Unmarshal(respBodyBytes, &tuyaResp); err != nil {
 		return nil, fmt.Errorf("failed to decode token response from %s: %w", fullURL, err)
 	}
 
-	return &tuyaResponse, nil
+	return &tuyaResp, nil
 }
 
 func (c *Client) updateToken() error {

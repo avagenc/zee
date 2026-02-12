@@ -19,7 +19,7 @@ func NewPool(url string, maxConns, minConns int32, maxConnLifetime, maxConnIdleT
 	cfg.MaxConnLifetime = maxConnLifetime
 	cfg.MaxConnIdleTime = maxConnIdleTime
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)

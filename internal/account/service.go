@@ -2,10 +2,15 @@ package account
 
 import (
 	"context"
+
+	"github.com/avagenc/zee/internal/domain"
 )
 
+var ErrNotLinked = domain.ErrAccountNotLinked
+
 type Repository interface {
-	GetByOwnerID(ctx context.Context, ownerID string) (Account, error)
+	Get(ctx context.Context, ownerID string) (Account, error)
+	GetTuyaUID(ctx context.Context, ownerID string) (string, error)
 }
 
 type service struct {
@@ -16,6 +21,10 @@ func NewService(repo Repository) *service {
 	return &service{repo: repo}
 }
 
-func (s *service) GetByOwnerID(ctx context.Context, ownerID string) (Account, error) {
-	return s.repo.GetByOwnerID(ctx, ownerID)
+func (s *service) Get(ctx context.Context, ownerID string) (Account, error) {
+	return s.repo.Get(ctx, ownerID)
+}
+
+func (s *service) GetTuyaUID(ctx context.Context, ownerID string) (string, error) {
+	return s.repo.GetTuyaUID(ctx, ownerID)
 }

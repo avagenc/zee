@@ -1,5 +1,9 @@
 package domain
 
+import "errors"
+
+var ErrDeviceNotOwned = errors.New("device does not belong to user")
+
 type DataPoint struct {
 	Code  string `json:"code"`
 	Value any    `json:"value"`

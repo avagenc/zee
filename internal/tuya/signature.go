@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-
 )
 
 type Signature struct {
@@ -20,14 +18,14 @@ type Signature struct {
 	SignMethod string `json:"sign_method"`
 }
 
-func generateSignature(accessID, accessSecret, accessToken string, req Request) (*Signature, error) {
+func generateSignature(accessID, accessSecret, accessToken, method, path string, body []byte) (*Signature, error) {
 	timestamp := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
 
 	hash := sha256.New()
-	hash.Write([]byte(req.Body))
+	hash.Write(body)
 	contentSha256 := hex.EncodeToString(hash.Sum(nil))
 
-	stringToSign := req.Method + "\n" + contentSha256 + "\n\n" + req.URLPath
+	stringToSign := method + "\n" + contentSha256 + "\n\n" + path
 
 	nonceBytes := make([]byte, 16)
 	if _, err := rand.Read(nonceBytes); err != nil {

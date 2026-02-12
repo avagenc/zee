@@ -1,6 +1,7 @@
 package device
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -9,22 +10,60 @@ import (
 	"github.com/avagenc/zee/internal/domain"
 )
 
-type TuyaClient interface {
-	QueryDevicesInHome(homeID string) (json.RawMessage, error)
+type TuyaUIDGetter func(ctx context.Context, userID string) (string, error)
+
+type TuyaIoTClient interface {
 	SendCommands(deviceID string, commands any) (json.RawMessage, error)
 	GetMultiChannelName(deviceID string) (json.RawMessage, error)
-	GetUserDeviceList(tuyaUID string) ([]domain.Device, error)
+	List(tuyaUID string) ([]domain.Device, error)
 }
 
 type service struct {
-	tuya TuyaClient
+	getTuyaID TuyaUIDGetter
+	tuya      TuyaIoTClient
 }
 
-func NewService(tuya TuyaClient) *service {
-	return &service{tuya: tuya}
+func NewService(getTuyaID TuyaUIDGetter, tuya TuyaIoTClient) *service {
+	return &service{getTuyaID: getTuyaID, tuya: tuya}
 }
 
-func (s *service) SendCommands(deviceID string, commands []domain.DataPoint) (json.RawMessage, error) {
+func (s *service) List(ctx context.Context, userID string) ([]domain.Device, error) {
+	tuyaUID, err := s.getTuyaID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	devices, err := s.tuya.List(tuyaUID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(devices) == 0 {
+		return []domain.Device{}, nil
+	}
+
+	if err := s.enrichDevices(devices); err != nil {
+		fmt.Printf("Warning: %v\n", err)
+	}
+
+	return devices, nil
+}
+
+func (s *service) SendCommands(ctx context.Context, userID string, deviceID string, commands []domain.DataPoint) (json.RawMessage, error) {
+	tuyaUID, err := s.getTuyaID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	deviceIDs, err := s.getUserDeviceIDs(tuyaUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify device ownership: %w", err)
+	}
+
+	if !contains(deviceIDs, deviceID) {
+		return nil, domain.ErrDeviceNotOwned
+	}
+
 	result, err := s.tuya.SendCommands(deviceID, commands)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send commands: %w", err)
@@ -32,46 +71,16 @@ func (s *service) SendCommands(deviceID string, commands []domain.DataPoint) (js
 	return result, nil
 }
 
-func (s *service) ListByTuyaUID(tuyaUID string) ([]domain.Device, error) {
-	devices, err := s.tuya.GetUserDeviceList(tuyaUID)
+func (s *service) getUserDeviceIDs(tuyaUID string) ([]string, error) {
+	devices, err := s.tuya.List(tuyaUID)
 	if err != nil {
 		return nil, err
 	}
-
-	if len(devices) == 0 {
-		return []domain.Device{}, nil
+	ids := make([]string, len(devices))
+	for i, d := range devices {
+		ids[i] = d.ID
 	}
-
-	if err := s.enrichDevices(devices); err != nil {
-		fmt.Printf("Warning: %v\n", err)
-	}
-
-	return devices, nil
-}
-
-// Deprecated: Unused. Kept for future reference.
-func (s *service) ListByHome(homeID string) ([]domain.Device, error) {
-	result, err := s.tuya.QueryDevicesInHome(homeID)
-	if err != nil {
-		return nil, err
-	}
-
-	var devices []domain.Device
-	if len(result) > 0 {
-		if err := json.Unmarshal(result, &devices); err != nil {
-			return nil, fmt.Errorf("failed to decode devices: %w", err)
-		}
-	}
-
-	if len(devices) == 0 {
-		return []domain.Device{}, nil
-	}
-
-	if err := s.enrichDevices(devices); err != nil {
-		fmt.Printf("Warning: %v\n", err)
-	}
-
-	return devices, nil
+	return ids, nil
 }
 
 func (s *service) enrichDevices(devices []domain.Device) error {
@@ -133,4 +142,13 @@ func (s *service) enrichWithChannelNames(devices []*domain.Device) error {
 	}
 
 	return nil
+}
+
+func contains(slice []string, item string) bool {
+	for _, v := range slice {
+		if v == item {
+			return true
+		}
+	}
+	return false
 }

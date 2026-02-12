@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load()
+	cfg, err := config.LoadAPI()
 	if err != nil {
 		log.Fatalf("FATAL: %v", err)
 	}
@@ -38,6 +38,12 @@ func main() {
 		log.Fatalf("FATAL: Schema validation failed: %v", err)
 	}
 
+	repo := struct {
+		account account.Repository
+	}{
+		account: account.NewRepository(pgPool),
+	}
+
 	tuyaClient, err := tuya.NewClient(
 		cfg.Tuya.AccessID,
 		cfg.Tuya.AccessSecret,
@@ -47,28 +53,20 @@ func main() {
 		log.Fatalf("FATAL: Failed to create Tuya client: %v", err)
 	}
 
-	accountRepo := account.NewRepository(pgPool)
+	tuyaIoTClient := struct {
+		device device.TuyaIoTClient
+	}{
+		device: device.NewTuyaIoTClient(tuyaClient),
+	}
+
+	accountSvc := account.NewService(repo.account)
 
 	svc := struct {
 		account account.Service
 		device  device.Service
 	}{
-		account: account.NewService(accountRepo),
-		device:  device.NewService(tuyaClient),
-	}
-
-	mw := struct {
-		tuya      *middleware.Tuya
-		requestID func(http.Handler) http.Handler
-		realIP    func(http.Handler) http.Handler
-		logger    func(http.Handler) http.Handler
-		recoverer func(http.Handler) http.Handler
-	}{
-		tuya:      middleware.NewTuya(accountRepo, tuyaClient),
-		requestID: chiMiddleware.RequestID,
-		realIP:    chiMiddleware.RealIP,
-		logger:    chiMiddleware.Logger,
-		recoverer: chiMiddleware.Recoverer,
+		account: accountSvc,
+		device:  device.NewService(accountSvc.GetTuyaUID, tuyaIoTClient.device),
 	}
 
 	hdl := struct {
@@ -83,10 +81,10 @@ func main() {
 
 	r := chi.NewRouter()
 
-	r.Use(mw.requestID)
-	r.Use(mw.realIP)
-	r.Use(mw.logger)
-	r.Use(mw.recoverer)
+	r.Use(chiMiddleware.RequestID)
+	r.Use(chiMiddleware.RealIP)
+	r.Use(chiMiddleware.Logger)
+	r.Use(chiMiddleware.Recoverer)
 	r.Use(middleware.AuthenticateAPIKey(cfg.Security.APIKey))
 
 	r.Get("/", hdl.system.Index)
@@ -95,16 +93,9 @@ func main() {
 		r.Use(middleware.RequireUserIdentity)
 
 		r.Get("/account", hdl.account.Get)
-	})
-
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.RequireUserIdentity)
-		r.Use(mw.tuya.RequireAccount)
-
 		r.Get("/devices", hdl.device.List)
 
 		r.Route("/devices/{deviceId}", func(r chi.Router) {
-			r.Use(mw.tuya.RequireDeviceOwnership)
 			r.Post("/commands", hdl.device.SendCommands)
 		})
 	})

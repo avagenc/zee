@@ -1,19 +1,19 @@
 package device
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/avagenc/zee/internal/domain"
-	"github.com/avagenc/zee/internal/middleware"
 	"github.com/avagenc/zee/pkg/api"
 	"github.com/go-chi/chi/v5"
 )
 
 type Service interface {
-	ListByHome(homeID string) ([]domain.Device, error)
-	ListByTuyaUID(tuyaUID string) ([]domain.Device, error)
-	SendCommands(deviceID string, commands []domain.DataPoint) (json.RawMessage, error)
+	List(ctx context.Context, userID string) ([]domain.Device, error)
+	SendCommands(ctx context.Context, userID string, deviceID string, commands []domain.DataPoint) (json.RawMessage, error)
 }
 
 type Handler struct {
@@ -25,31 +25,18 @@ func NewHandler(svc Service) *Handler {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	tuyaUID, err := middleware.GetTuyaUIDFromContext(r.Context())
+	userID, err := api.GetUserIDFromContext(r.Context())
 	if err != nil {
-		api.Respond(w, http.StatusUnauthorized, api.NewErrorResponse("UNAUTHORIZED", "Missing Tuya identity", nil))
+		api.Respond(w, http.StatusUnauthorized, api.NewErrorResponse("UNAUTHORIZED", "Missing user identity", nil))
 		return
 	}
 
-	devices, err := h.svc.ListByTuyaUID(tuyaUID)
+	devices, err := h.svc.List(r.Context(), userID)
 	if err != nil {
-		api.Respond(w, http.StatusBadGateway, api.NewErrorResponse("UPSTREAM_ERROR", err.Error(), nil))
-		return
-	}
-
-	api.Respond(w, http.StatusOK, api.NewSuccessResponse("Devices retrieved successfully", devices, nil))
-}
-
-// Deprecated: Unused. Kept for future reference.
-func (h *Handler) ListByHome(w http.ResponseWriter, r *http.Request) {
-	homeID := chi.URLParam(r, "homeId")
-	if homeID == "" {
-		api.Respond(w, http.StatusBadRequest, api.NewErrorResponse("INVALID_REQUEST", "Missing homeId", nil))
-		return
-	}
-
-	devices, err := h.svc.ListByHome(homeID)
-	if err != nil {
+		if errors.Is(err, domain.ErrAccountNotLinked) {
+			api.Respond(w, http.StatusUnauthorized, api.NewErrorResponse("UNAUTHORIZED", "No Tuya App Account is linked to the user", nil))
+			return
+		}
 		api.Respond(w, http.StatusBadGateway, api.NewErrorResponse("UPSTREAM_ERROR", err.Error(), nil))
 		return
 	}
@@ -58,6 +45,12 @@ func (h *Handler) ListByHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) SendCommands(w http.ResponseWriter, r *http.Request) {
+	userID, err := api.GetUserIDFromContext(r.Context())
+	if err != nil {
+		api.Respond(w, http.StatusUnauthorized, api.NewErrorResponse("UNAUTHORIZED", "Missing user identity", nil))
+		return
+	}
+
 	deviceID := chi.URLParam(r, "deviceId")
 	if deviceID == "" {
 		api.Respond(w, http.StatusBadRequest, api.NewErrorResponse("INVALID_REQUEST", "Missing deviceId", nil))
@@ -78,8 +71,16 @@ func (h *Handler) SendCommands(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.svc.SendCommands(deviceID, req.Commands)
+	result, err := h.svc.SendCommands(r.Context(), userID, deviceID, req.Commands)
 	if err != nil {
+		if errors.Is(err, domain.ErrAccountNotLinked) {
+			api.Respond(w, http.StatusUnauthorized, api.NewErrorResponse("UNAUTHORIZED", "No Tuya App Account is linked to the user", nil))
+			return
+		}
+		if errors.Is(err, domain.ErrDeviceNotOwned) {
+			api.Respond(w, http.StatusForbidden, api.NewErrorResponse("FORBIDDEN", "Device does not belong to user", nil))
+			return
+		}
 		api.Respond(w, http.StatusBadGateway, api.NewErrorResponse("UPSTREAM_ERROR", err.Error(), nil))
 		return
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 type Service interface {
-	GetByOwnerID(ctx context.Context, ownerID string) (Account, error)
+	Get(ctx context.Context, ownerID string) (Account, error)
 }
 
 type Handler struct {
@@ -26,7 +26,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	acc, err := h.svc.GetByOwnerID(r.Context(), ownerID)
+	acc, err := h.svc.Get(r.Context(), ownerID)
 	if err != nil {
 		api.Respond(w, http.StatusNotFound, api.NewErrorResponse("NOT_FOUND", "Tuya account not linked", nil))
 		return
