@@ -5,19 +5,19 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/avagenc/zee/internal/account"
-	"github.com/avagenc/zee/internal/config"
-	"github.com/avagenc/zee/internal/device"
-	"github.com/avagenc/zee/internal/middleware"
-	"github.com/avagenc/zee/internal/postgres"
-	"github.com/avagenc/zee/internal/system"
-	"github.com/avagenc/zee/internal/tuya"
+	"github.com/avagenc/zee-api/internal/account"
+	"github.com/avagenc/zee-api/internal/config"
+	"github.com/avagenc/zee-api/internal/device"
+	"github.com/avagenc/zee-api/internal/middleware"
+	"github.com/avagenc/zee-api/internal/postgres"
+	"github.com/avagenc/zee-api/internal/system"
+	"github.com/avagenc/zee-api/internal/tuya"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
-	cfg, err := config.LoadAPI()
+	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("FATAL: %v", err)
 	}

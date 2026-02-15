@@ -3,7 +3,7 @@ package account
 import (
 	"context"
 
-	"github.com/avagenc/zee/internal/domain"
+	"github.com/avagenc/zee-api/internal/domain"
 )
 
 var ErrNotLinked = domain.ErrAccountNotLinked

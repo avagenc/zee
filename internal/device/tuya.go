@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/avagenc/zee/internal/domain"
+	"github.com/avagenc/zee-api/internal/domain"
 )
 
 type TuyaClient interface {

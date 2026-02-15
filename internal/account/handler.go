@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/avagenc/zee/pkg/api"
+	"github.com/avagenc/zee-api/pkg/api"
 )
 
 type Service interface {

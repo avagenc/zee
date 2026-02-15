@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/avagenc/zee/internal/domain"
+	"github.com/avagenc/zee-api/internal/domain"
 )
 
 type TuyaUIDGetter func(ctx context.Context, userID string) (string, error)

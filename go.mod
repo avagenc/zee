@@ -1,4 +1,4 @@
-module github.com/avagenc/zee
+module github.com/avagenc/zee-api
 
 go 1.25.0
 

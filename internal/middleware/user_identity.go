@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/avagenc/zee/pkg/api"
+	"github.com/avagenc/zee-api/pkg/api"
 )
 
 func RequireUserIdentity(next http.Handler) http.Handler {

@@ -5,6 +5,13 @@ on:
     branches: ["main", "dev"]
 
 jobs:
+name: Deploy App
+
+on:
+  push:
+    branches: ["main", "dev"]
+
+jobs:
   deploy:
     runs-on: ubuntu-latest
 
@@ -12,7 +19,7 @@ jobs:
 
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      APP_ENV: ${{ vars.APP_ENV }}
+      APP_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
       REGION: asia-southeast1
       REPO_NAME: docker
       SERVICE_NAME: zee-api
@@ -62,13 +69,8 @@ jobs:
             TUYA_ACCESS_ID=${{ secrets.TUYA_ACCESS_ID }}
             TUYA_ACCESS_SECRET=${{ secrets.TUYA_ACCESS_SECRET }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
+            ZEP_API_URL=${{ vars.ZEP_API_URL }}
+            ZEP_API_KEY=${{ secrets.ZEP_API_KEY }}
 
           secrets: |
             API_KEY=API_KEY:latest
-
-      - name: Make Service Public
-        run: |
-          gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
-            --region ${{ env.REGION }} \
-            --member="allUsers" \
-            --role="roles/run.invoker"
