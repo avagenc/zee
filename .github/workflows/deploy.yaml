@@ -62,8 +62,6 @@ jobs:
             TUYA_ACCESS_ID=${{ secrets.TUYA_ACCESS_ID }}
             TUYA_ACCESS_SECRET=${{ secrets.TUYA_ACCESS_SECRET }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
-            ZEP_API_URL=${{ vars.ZEP_API_URL }}
-            ZEP_API_KEY=${{ secrets.ZEP_API_KEY }}
 
           secrets: |
             API_KEY=API_KEY:latest
