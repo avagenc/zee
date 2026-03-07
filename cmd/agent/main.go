@@ -3,20 +3,17 @@ package main
 import (
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/avagenc/zee-agent/internal/chat"
 	"github.com/avagenc/zee-agent/internal/config"
-	"github.com/avagenc/zee-agent/internal/middleware"
-	"github.com/avagenc/zee-agent/system"
+	"github.com/avagenc/zee-agent/internal/identity"
+	"github.com/avagenc/zee-agent/internal/system"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/sashabaranov/go-openai"
 
-	"google.golang.org/adk/agent"
 	"google.golang.org/adk/agent/llmagent"
-	"google.golang.org/adk/cmd/launcher"
-	"google.golang.org/adk/server/adkrest"
+	"google.golang.org/adk/runner"
 	"google.golang.org/adk/session"
 )
 
@@ -26,37 +23,41 @@ func main() {
 		log.Fatalf("FATAL: %v", err)
 	}
 
-	if cfg.Groq == nil || cfg.Groq.APIKey == "" {
-		log.Fatalf("FATAL: GROQ_API_KEY environment variable is required")
-	}
+	openaiConfig := openai.DefaultConfig(cfg.Groq.APIKey)
+	openaiConfig.BaseURL = cfg.Groq.BaseURL
+	openaiClient := openai.NewClientWithConfig(openaiConfig)
 
-	groqCfg := openai.DefaultConfig(cfg.Groq.APIKey)
-	groqCfg.BaseURL = cfg.Groq.BaseURL
-	groqClient := openai.NewClientWithConfig(groqCfg)
+	model := chat.NewModel(openaiClient, "openai/gpt-oss-20b")
 
-	model := chat.NewModel(groqClient, "llama-3.3-70b-versatile")
-
-	a, err := llmagent.New(llmagent.Config{
-		Name:        "Zee",
-		Model:       model,
-		Description: "A simple baseline agent powered by Groq",
-		Instruction: "You are a helpful, smart AI assistant. Answer the user's questions clearly.",
+	zeeAgent, err := llmagent.New(llmagent.Config{
+		Name:            "Zee",
+		Model:           model,
+		Description:     "Starter agent",
+		Instruction:     "You are a simple llm chatbot.",
+		IncludeContents: llmagent.IncludeContentsNone,
 	})
 	if err != nil {
-		log.Fatalf("FATAL: Failed to create agent: %v", err)
+		log.Fatalf("Failed to create agent: %v", err)
 	}
 
-	adkCfg := &launcher.Config{
-		AgentLoader:    agent.NewSingleLoader(a),
-		SessionService: session.InMemoryService(),
+	sessionService := session.InMemoryService()
+	rnr, err := runner.New(runner.Config{
+		AppName:        cfg.App.Name,
+		Agent:          zeeAgent,
+		SessionService: sessionService,
+	})
+	if err != nil {
+		log.Fatalf("Failed to create runner: %v", err)
 	}
 
-	hdl := struct {
+	h := struct {
 		system *system.Handler
-		chat   http.Handler
+		chat   *chat.Handler
+		idMw   *identity.Middleware
 	}{
 		system: system.NewHandler(cfg.App.Name, cfg.App.Version, cfg.App.Env),
-		chat:   adkrest.NewHandler(adkCfg, 120*time.Second),
+		chat:   chat.NewHandler(rnr, sessionService),
+		idMw:   identity.NewMiddleware(),
 	}
 
 	r := chi.NewRouter()
@@ -66,15 +67,15 @@ func main() {
 	r.Use(chiMiddleware.Logger)
 	r.Use(chiMiddleware.Recoverer)
 
-	r.Get("/", hdl.system.Index)
+	r.Get("/", h.system.Index)
 
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.RequireUserIdentity)
+		r.Use(h.idMw.RequireUserIdentity)
 
-		r.Mount("/chat", http.StripPrefix("/chat", hdl.chat))
+		r.Post("/chat", h.chat.HandleChat)
 	})
 
-	server := &http.Server{
+	s := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
 		Handler:      r,
 		ReadTimeout:  cfg.Server.ReadTimeout,
@@ -85,7 +86,7 @@ func main() {
 	log.Printf("In the name of Allah, The Most Compassionate, The Most Merciful")
 	log.Printf("Starting %s (%s) on port %s\n", cfg.App.Name, cfg.App.Version, cfg.Server.Port)
 
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("FATAL: Failed to start API: %v", err)
 	}
 }
