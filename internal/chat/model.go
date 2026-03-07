@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"iter"
@@ -32,7 +33,6 @@ func (m *Model) Name() string {
 }
 
 // GenerateContent generates content from the model.
-// ADK uses iter.Seq2 to handle streaming. We currently support only non-streaming for simplicity in this adapter.
 func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stream bool) iter.Seq2[*model.LLMResponse, error] {
 	return func(yield func(*model.LLMResponse, error) bool) {
 		// Convert ADK's genai.Content to OpenAI messages
@@ -45,18 +45,41 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 				role = openai.ChatMessageRoleAssistant
 			}
 
-			// We only handle simple text parts for now
 			var textContent string
+			var toolCalls []openai.ToolCall
+			var toolCallID string
+
 			for _, part := range content.Parts {
 				if part.Text != "" {
 					textContent += part.Text
 				}
+				if part.FunctionCall != nil {
+					// Map genai.FunctionCall to openai.ToolCall
+					argsBytes, _ := json.Marshal(part.FunctionCall.Args)
+					toolCalls = append(toolCalls, openai.ToolCall{
+						ID:   part.FunctionCall.Name + "_id", // naive mapping
+						Type: openai.ToolTypeFunction,
+						Function: openai.FunctionCall{
+							Name:      part.FunctionCall.Name,
+							Arguments: string(argsBytes),
+						},
+					})
+				}
+				if part.FunctionResponse != nil {
+					role = openai.ChatMessageRoleTool
+					toolCallID = part.FunctionResponse.Name + "_id" // simplified mapping
+					respBytes, _ := json.Marshal(part.FunctionResponse.Response)
+					textContent = string(respBytes)
+				}
 			}
 
-			messages = append(messages, openai.ChatCompletionMessage{
-				Role:    role,
-				Content: textContent,
-			})
+			msg := openai.ChatCompletionMessage{
+				Role:       role,
+				Content:    textContent,
+				ToolCalls:  toolCalls,
+				ToolCallID: toolCallID,
+			}
+			messages = append(messages, msg)
 		}
 
 		if req.Config != nil && req.Config.SystemInstruction != nil {
@@ -67,7 +90,6 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 				}
 			}
 			if systemText != "" {
-				// Prepend system message
 				messages = append([]openai.ChatCompletionMessage{
 					{
 						Role:    openai.ChatMessageRoleSystem,
@@ -82,6 +104,74 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 		groqReq := openai.ChatCompletionRequest{
 			Model:    m.Name(),
 			Messages: messages,
+		}
+
+		// Map tools
+		if req.Config != nil && len(req.Config.Tools) > 0 {
+			var mapSchema func(s *genai.Schema) map[string]any
+			mapSchema = func(s *genai.Schema) map[string]any {
+				if s == nil {
+					return nil
+				}
+				m := make(map[string]any)
+				if s.Type != "" {
+					// openai schema types must be lowercase, genai models them uppercase
+					switch s.Type {
+					case genai.TypeString:
+						m["type"] = "string"
+					case genai.TypeNumber:
+						m["type"] = "number"
+					case genai.TypeInteger:
+						m["type"] = "integer"
+					case genai.TypeBoolean:
+						m["type"] = "boolean"
+					case genai.TypeArray:
+						m["type"] = "array"
+					case genai.TypeObject:
+						m["type"] = "object"
+					default:
+						m["type"] = "string" // fallback
+					}
+				}
+				if s.Format != "" {
+					m["format"] = s.Format
+				}
+				if s.Description != "" {
+					m["description"] = s.Description
+				}
+				if len(s.Enum) > 0 {
+					m["enum"] = s.Enum
+				}
+				if len(s.Required) > 0 {
+					m["required"] = s.Required
+				}
+				if s.Items != nil {
+					m["items"] = mapSchema(s.Items)
+				}
+				if len(s.Properties) > 0 {
+					props := make(map[string]any)
+					for k, v := range s.Properties {
+						props[k] = mapSchema(v)
+					}
+					m["properties"] = props
+				}
+				return m
+			}
+
+			for _, t := range req.Config.Tools {
+				for _, fd := range t.FunctionDeclarations {
+					schemaMap := mapSchema(fd.Parameters)
+					schemaBytes, _ := json.Marshal(schemaMap)
+					groqReq.Tools = append(groqReq.Tools, openai.Tool{
+						Type: openai.ToolTypeFunction,
+						Function: &openai.FunctionDefinition{
+							Name:        fd.Name,
+							Description: fd.Description,
+							Parameters:  json.RawMessage(schemaBytes),
+						},
+					})
+				}
+			}
 		}
 
 		if req.Config != nil && req.Config.Temperature != nil {
@@ -99,13 +189,33 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 			return
 		}
 
+		choice := resp.Choices[0]
+
 		// Convert back to ADK model response
+		parts := []*genai.Part{}
+		if choice.Message.Content != "" {
+			parts = append(parts, &genai.Part{Text: choice.Message.Content})
+		}
+
+		for _, tc := range choice.Message.ToolCalls {
+			if tc.Type == openai.ToolTypeFunction {
+				var args map[string]any
+				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+					args = make(map[string]any)
+				}
+				parts = append(parts, &genai.Part{
+					FunctionCall: &genai.FunctionCall{
+						Name: tc.Function.Name,
+						Args: args,
+					},
+				})
+			}
+		}
+
 		adkResponse := &model.LLMResponse{
 			Content: &genai.Content{
-				Role: "model",
-				Parts: []*genai.Part{
-					{Text: resp.Choices[0].Message.Content},
-				},
+				Role:  "model",
+				Parts: parts,
 			},
 			TurnComplete: true,
 			FinishReason: genai.FinishReasonStop,
