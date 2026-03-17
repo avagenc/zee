@@ -13,8 +13,6 @@ import (
 	"google.golang.org/genai"
 )
 
-// Model wraps the OpenAI client configured for Groq.
-// It implements the google.golang.org/adk/model.LLM interface.
 type Model struct {
 	client *openai.Client
 	name   string
@@ -27,15 +25,12 @@ func NewModel(client *openai.Client, name string) *Model {
 	}
 }
 
-// Name returns the name of the model.
 func (m *Model) Name() string {
 	return m.name
 }
 
-// GenerateContent generates content from the model.
 func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stream bool) iter.Seq2[*model.LLMResponse, error] {
 	return func(yield func(*model.LLMResponse, error) bool) {
-		// Convert ADK's genai.Content to OpenAI messages
 		var messages []openai.ChatCompletionMessage
 		for _, content := range req.Contents {
 			role := content.Role
@@ -54,10 +49,9 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 					textContent += part.Text
 				}
 				if part.FunctionCall != nil {
-					// Map genai.FunctionCall to openai.ToolCall
 					argsBytes, _ := json.Marshal(part.FunctionCall.Args)
 					toolCalls = append(toolCalls, openai.ToolCall{
-						ID:   part.FunctionCall.Name + "_id", // naive mapping
+						ID:   part.FunctionCall.Name + "_id",
 						Type: openai.ToolTypeFunction,
 						Function: openai.FunctionCall{
 							Name:      part.FunctionCall.Name,
@@ -67,7 +61,7 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 				}
 				if part.FunctionResponse != nil {
 					role = openai.ChatMessageRoleTool
-					toolCallID = part.FunctionResponse.Name + "_id" // simplified mapping
+					toolCallID = part.FunctionResponse.Name + "_id"
 					respBytes, _ := json.Marshal(part.FunctionResponse.Response)
 					textContent = string(respBytes)
 				}
@@ -106,7 +100,6 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 			Messages: messages,
 		}
 
-		// Map tools
 		if req.Config != nil && len(req.Config.Tools) > 0 {
 			var mapSchema func(s *genai.Schema) map[string]any
 			mapSchema = func(s *genai.Schema) map[string]any {
@@ -115,7 +108,6 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 				}
 				m := make(map[string]any)
 				if s.Type != "" {
-					// openai schema types must be lowercase, genai models them uppercase
 					switch s.Type {
 					case genai.TypeString:
 						m["type"] = "string"
@@ -130,7 +122,7 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 					case genai.TypeObject:
 						m["type"] = "object"
 					default:
-						m["type"] = "string" // fallback
+						m["type"] = "string"
 					}
 				}
 				if s.Format != "" {
@@ -191,7 +183,6 @@ func (m *Model) GenerateContent(ctx context.Context, req *model.LLMRequest, stre
 
 		choice := resp.Choices[0]
 
-		// Convert back to ADK model response
 		parts := []*genai.Part{}
 		if choice.Message.Content != "" {
 			parts = append(parts, &genai.Part{Text: choice.Message.Content})

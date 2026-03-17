@@ -8,13 +8,14 @@ import (
 	"github.com/avagenc/zee-agent/internal/config"
 	"github.com/avagenc/zee-agent/internal/identity"
 	"github.com/avagenc/zee-agent/internal/system"
+	zepclient "github.com/getzep/zep-go/v3/client"
+	"github.com/getzep/zep-go/v3/option"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/sashabaranov/go-openai"
 
 	"google.golang.org/adk/agent/llmagent"
 	"google.golang.org/adk/runner"
-	"google.golang.org/adk/session"
 )
 
 func main() {
@@ -29,35 +30,41 @@ func main() {
 
 	model := chat.NewModel(openaiClient, "openai/gpt-oss-20b")
 
-	zeeAgent, err := llmagent.New(llmagent.Config{
-		Name:            "Zee",
-		Model:           model,
-		Description:     "Starter agent",
-		Instruction:     "You are a simple llm chatbot.",
-		IncludeContents: llmagent.IncludeContentsNone,
+	agent, err := llmagent.New(llmagent.Config{
+		Name:        "Zee",
+		Model:       model,
+		Description: "Starter agent",
+		Instruction: "You are a simple llm chatbot.",
 	})
 	if err != nil {
 		log.Fatalf("Failed to create agent: %v", err)
 	}
 
-	sessionService := session.InMemoryService()
+	zepOpts := []option.RequestOption{
+		option.WithAPIKey(cfg.Zep.APIKey),
+	}
+	if cfg.Zep.URL != "" {
+		zepOpts = append(zepOpts, option.WithBaseURL(cfg.Zep.URL))
+	}
+	zepClient := zepclient.NewClient(zepOpts...)
+
+	sessionService := chat.NewZepSessionService(zepClient)
+
 	rnr, err := runner.New(runner.Config{
 		AppName:        cfg.App.Name,
-		Agent:          zeeAgent,
+		Agent:          agent,
 		SessionService: sessionService,
 	})
 	if err != nil {
-		log.Fatalf("Failed to create runner: %v", err)
+		log.Fatalf("Failed to create agent runner: %v", err)
 	}
 
 	h := struct {
 		system *system.Handler
 		chat   *chat.Handler
-		idMw   *identity.Middleware
 	}{
 		system: system.NewHandler(cfg.App.Name, cfg.App.Version, cfg.App.Env),
-		chat:   chat.NewHandler(rnr, sessionService),
-		idMw:   identity.NewMiddleware(),
+		chat:   chat.NewHandler(rnr, zepClient, sessionService),
 	}
 
 	r := chi.NewRouter()
@@ -70,7 +77,7 @@ func main() {
 	r.Get("/", h.system.Index)
 
 	r.Group(func(r chi.Router) {
-		r.Use(h.idMw.RequireUserIdentity)
+		r.Use(identity.RequireUserID)
 
 		r.Post("/chat", h.chat.HandleChat)
 	})

@@ -26,6 +26,7 @@ type Server struct {
 
 type Zep struct {
 	APIKey string `env:"ZEP_API_KEY" env-required:"true"`
+	URL    string `env:"ZEP_API_URL"`
 }
 
 type ZeeAPI struct {

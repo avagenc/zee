@@ -2,9 +2,12 @@ package chat
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/avagenc/zee-agent/pkg/api"
+	"github.com/getzep/zep-go/v3"
+	zepclient "github.com/getzep/zep-go/v3/client"
 	"github.com/google/uuid"
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/runner"
@@ -22,12 +25,14 @@ type ChatResponse struct {
 
 type Handler struct {
 	rnr            *runner.Runner
+	zepClient      *zepclient.Client
 	sessionService session.Service
 }
 
-func NewHandler(rnr *runner.Runner, sessionService session.Service) *Handler {
+func NewHandler(rnr *runner.Runner, zepClient *zepclient.Client, sessionService session.Service) *Handler {
 	return &Handler{
 		rnr:            rnr,
+		zepClient:      zepClient,
 		sessionService: sessionService,
 	}
 }
@@ -44,28 +49,48 @@ func (h *Handler) HandleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg := genai.NewContentFromText(req.Message, "user")
-	sessionID := uuid.New().String()
-	userID := "system"
-
-	_, err := h.sessionService.Create(r.Context(), &session.CreateRequest{
-		AppName:   "zee-agent",
-		UserID:    userID,
-		SessionID: sessionID,
-	})
-	if err != nil {
-		api.WriteError(w, api.NewError(http.StatusInternalServerError, "AGENT_ERROR", "Failed to initialize stateless session: "+err.Error()))
+	userID, err := api.GetUserIDFromContext(r.Context())
+	if err != nil || userID == "" {
+		api.WriteError(w, api.NewError(http.StatusUnauthorized, "UNAUTHORIZED", "Missing user identity"))
 		return
 	}
-	defer func() {
-		_ = h.sessionService.Delete(r.Context(), &session.DeleteRequest{
-			AppName:   "zee-agent",
-			UserID:    userID,
-			SessionID: sessionID,
-		})
-	}()
 
-	events := h.rnr.Run(r.Context(), userID, sessionID, msg, agent.RunConfig{})
+	_, err = h.zepClient.User.Add(r.Context(), &zep.CreateUserRequest{
+		UserID: userID,
+	})
+	if err != nil {
+		log.Printf("zep user upsert (non-fatal): %v", err)
+	}
+
+	var threadID string
+	threads, err := h.zepClient.User.GetThreads(r.Context(), userID)
+	if err == nil && len(threads) > 0 {
+		threadID = *threads[0].ThreadID
+	} else {
+		threadID = uuid.New().String()
+		_, err = h.zepClient.Thread.Create(r.Context(), &zep.CreateThreadRequest{
+			ThreadID: threadID,
+			UserID:   userID,
+		})
+		if err != nil {
+			log.Printf("failed to create zep thread: %v", err)
+			api.WriteError(w, api.NewError(http.StatusInternalServerError, "AGENT_ERROR", "Failed to create conversation thread: "+err.Error()))
+			return
+		}
+	}
+
+	_, err = h.sessionService.Create(r.Context(), &session.CreateRequest{
+		AppName:   "zee-agent",
+		UserID:    userID,
+		SessionID: threadID,
+	})
+	if err != nil {
+		api.WriteError(w, api.NewError(http.StatusInternalServerError, "AGENT_ERROR", "Failed to initialize session: "+err.Error()))
+		return
+	}
+
+	msg := genai.NewContentFromText(req.Message, "user")
+	events := h.rnr.Run(r.Context(), userID, threadID, msg, agent.RunConfig{})
 
 	var fullResponse string
 	for event, err := range events {
