@@ -6,13 +6,7 @@ import (
 	"github.com/avagenc/zee-agent/pkg/api"
 )
 
-type Middleware struct{}
-
-func NewMiddleware() *Middleware {
-	return &Middleware{}
-}
-
-func (m *Middleware) RequireUserIdentity(next http.Handler) http.Handler {
+func RequireUserID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := r.Header.Get("x-user-id")
 		if userID == "" {
