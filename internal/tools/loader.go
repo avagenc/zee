@@ -1,0 +1,96 @@
+package tools
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/avagenc/zee-agent/pkg/zeeapi"
+	"google.golang.org/adk/tool"
+	"google.golang.org/adk/tool/functiontool"
+)
+
+type Tool struct {
+	GetAccount            tool.Tool
+	ListDevices           tool.Tool
+	SendCommandsToADevice tool.Tool
+}
+
+func Load(client *zeeapi.Client) (*Tool, error) {
+	getAccount, err := functiontool.New(
+		functiontool.Config{
+			Name:        "get_account",
+			Description: "Use this tool to retrieve the Tuya account linked to the current authenticated avagenc user.",
+		},
+		func(ctx tool.Context, args struct{}) (any, error) {
+			userID := ctx.UserID()
+			if userID == "" {
+				return nil, fmt.Errorf("missing user identity")
+			}
+			result, err := client.GetAccount(ctx, userID)
+			if err != nil {
+				log.Printf("[tool:get_account] error for user %s: %v", userID, err)
+				return nil, err
+			}
+			log.Printf("[tool:get_account] success for user %s", userID)
+			return result, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	listDevices, err := functiontool.New(
+		functiontool.Config{
+			Name:        "list_devices",
+			Description: "Use this tool to retrieve all Tuya IoT devices linked to the linked user's Tuya account.",
+		},
+		func(ctx tool.Context, args struct{}) (map[string]any, error) {
+			userID := ctx.UserID()
+			if userID == "" {
+				return nil, fmt.Errorf("missing user identity")
+			}
+			result, err := client.ListDevices(ctx, userID)
+			if err != nil {
+				log.Printf("[tool:list_devices] error for user %s: %v", userID, err)
+				return nil, err
+			}
+			log.Printf("[tool:list_devices] success for user %s", userID)
+			return map[string]any{"devices": result}, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	sendCommandsToADevice, err := functiontool.New(
+		functiontool.Config{
+			Name:        "send_commands_to_a_device",
+			Description: `Use this tool to send commands to a device by the device "id". You can get "id" of devices from list_devices tool. Always pay attention to the "id" of the device, make sure you input the accurate device "id" or else it would be fatal. in string form but array of maps`,
+		},
+		func(ctx tool.Context, args struct {
+			DeviceID string `json:"device_id"`
+			Commands any    `json:"commands"`
+		}) (any, error) {
+			userID := ctx.UserID()
+			if userID == "" {
+				return nil, fmt.Errorf("missing user identity")
+			}
+			result, err := client.SendCommands(ctx, userID, args.DeviceID, args.Commands)
+			if err != nil {
+				log.Printf("[tool:send_commands_to_a_device] error for user %s, device %s: %v", userID, args.DeviceID, err)
+				return nil, err
+			}
+			log.Printf("[tool:send_commands_to_a_device] success for user %s, device %s", userID, args.DeviceID)
+			return result, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Tool{
+		GetAccount:            getAccount,
+		ListDevices:           listDevices,
+		SendCommandsToADevice: sendCommandsToADevice,
+	}, nil
+}

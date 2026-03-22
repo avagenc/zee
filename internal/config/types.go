@@ -8,7 +8,7 @@ type Config struct {
 
 	Zep    *Zep
 	ZeeAPI *ZeeAPI
-	Groq   *Groq
+	Gemini *Gemini
 }
 
 type App struct {
@@ -33,7 +33,6 @@ type ZeeAPI struct {
 	URL string `env:"ZEE_API_URL" env-required:"true"`
 }
 
-type Groq struct {
-	APIKey  string `env:"GROQ_API_KEY" env-required:"true"`
-	BaseURL string `env:"GROQ_BASE_URL"`
+type Gemini struct {
+	APIKey string `env:"GEMINI_API_KEY" env-required:"true"`
 }

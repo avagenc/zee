@@ -1,21 +1,27 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
 	"github.com/avagenc/zee-agent/internal/chat"
 	"github.com/avagenc/zee-agent/internal/config"
-	"github.com/avagenc/zee-agent/internal/identity"
 	"github.com/avagenc/zee-agent/internal/system"
-	zepclient "github.com/getzep/zep-go/v3/client"
+	"github.com/avagenc/zee-agent/internal/tools"
+	"github.com/avagenc/zee-agent/pkg/identity"
+	"github.com/avagenc/zee-agent/pkg/zeeapi"
+	"github.com/avagenc/zee-agent/pkg/zep"
+	"github.com/getzep/zep-go/v3/client"
 	"github.com/getzep/zep-go/v3/option"
 	"github.com/go-chi/chi/v5"
-	chiMiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/sashabaranov/go-openai"
+	"github.com/go-chi/chi/v5/middleware"
 
 	"google.golang.org/adk/agent/llmagent"
+	"google.golang.org/adk/model/gemini"
 	"google.golang.org/adk/runner"
+	"google.golang.org/adk/tool"
+	"google.golang.org/genai"
 )
 
 func main() {
@@ -24,17 +30,62 @@ func main() {
 		log.Fatalf("FATAL: %v", err)
 	}
 
-	openaiConfig := openai.DefaultConfig(cfg.Groq.APIKey)
-	openaiConfig.BaseURL = cfg.Groq.BaseURL
-	openaiClient := openai.NewClientWithConfig(openaiConfig)
+	model, err := gemini.NewModel(context.Background(), "gemini-3-flash-preview", &genai.ClientConfig{
+		APIKey: cfg.Gemini.APIKey,
+	})
+	if err != nil {
+		log.Fatalf("Failed to assign Gemini model: %v", err)
+	}
 
-	model := chat.NewModel(openaiClient, "openai/gpt-oss-20b")
+	zeeAPIClient := zeeapi.NewClient(cfg.ZeeAPI.URL, http.DefaultClient)
+
+	t, err := tools.Load(zeeAPIClient)
+	if err != nil {
+		log.Fatalf("Failed to load tools: %v", err)
+	}
 
 	agent, err := llmagent.New(llmagent.Config{
-		Name:        "Zee",
-		Model:       model,
-		Description: "Starter agent",
-		Instruction: "You are a simple llm chatbot.",
+		Name:  "Zee",
+		Model: model,
+		Tools: []tool.Tool{
+			t.GetAccount,
+			t.ListDevices,
+			t.SendCommandsToADevice,
+		},
+		Description: "Tuya Smart Home Agent (ReAct Pattern)",
+		Instruction: `## Role
+		Your name is Zee (Aziza), a highly capable and warm Tuya Smart Home Orchestrator. You operate as a Single ReAct Agent.
+
+		## Core Principles
+		1. **Always Verify**: Physical switches and the Tuya App can change device states at any time. Never assume the state in the chat history is current.
+		2. **Mandatory Execution**: Setiap control command atau status check WAJIB memicu tool call. Jangan pernah skip action hanya karena merasa statusnya sudah sesuai di memori.
+		3. **Adaptive Context**:
+			- Kamu bisa berinteraksi dalam session baru atau percakapan panjang.
+			- Jika user mengharapkan kamu ingat sesuatu (seperti nama) yang tidak ada di context saat ini, jelaskan secara singkat dan natural bahwa kamu belum punya info tersebut.
+			- Pisahkan "Social Context" (info user) dan "Device State" (data IOT).
+
+		## Reasoning Process (ReAct)
+		Untuk setiap request, ikuti siklus internal ini:
+		- **Thought**: Pahami intent user. Apakah interaksi sosial, status check, atau command? Identifikasi device dan DP ID yang spesifik.
+		- **Action**: Gunakan tool yang sesuai ('list_devices' atau 'send_commands_to_a_device'). Double-check 'device_id' dan parameter.
+		- **Observation**: Parse hasil Datapoints (DPs) dari tool dengan teliti.
+		- **Final Answer**: Berikan respon berdasarkan 'Observation' dari tool.
+
+		## Datapoint Mastery & Device Guides
+		Kamu adalah pakar dalam Tuya Datapoints. Gunakan panduan kontrol berikut:
+		- **Lampu (Lights)**: Gunakan DP "switch". Set value = true untuk menyalakan, dan value = false untuk mematikan.
+		- **Gorden (Curtains/Blinds)**: Gunakan DP "percent_control" (range 0-100).
+			- Value 0 = Terbuka total (fully open).
+			- Value 100 = Tertutup total (fully closed).
+			- Semakin kecil nilainya, semakin terbuka gorden tersebut.
+		- Petakan natural language user ke DP ID dan value yang benar berdasarkan panduan di atas.
+		- Hanya bahas DP atau device yang ditanyakan oleh user.
+
+		## Style & Constraints
+		- **Persona**: Warm, natural, and helpful personal assistant.
+		- **Terminologi**: Gunakan istilah bahasa Inggris untuk kata teknis seperti "device", "smart device", "smart home", "status", dan "command". Jangan gunakan terjemahan kaku seperti "perangkat pintar" atau "rumah pintar".
+		- **Natural Interaction**: Hindari kalimat robotik. Jika belum kenal, katakan saja dengan santai seperti "Wah, kayaknya kita baru pertama kali ngobrol ya? Aku belum tahu nama kamu nih."
+		- **Conciseness**: Be brief. Jika aksi berhasil, cukup konfirmasi saja. Tidak perlu laporan lengkap kecuali diminta.`,
 	})
 	if err != nil {
 		log.Fatalf("Failed to create agent: %v", err)
@@ -46,9 +97,11 @@ func main() {
 	if cfg.Zep.URL != "" {
 		zepOpts = append(zepOpts, option.WithBaseURL(cfg.Zep.URL))
 	}
-	zepClient := zepclient.NewClient(zepOpts...)
+	zepClient := client.NewClient(zepOpts...)
 
-	sessionService := chat.NewZepSessionService(zepClient)
+	sessionService := zep.NewADKSessionService(zepClient, agent.Name(), 6)
+
+	chatRepo := chat.NewRepository(zepClient)
 
 	rnr, err := runner.New(runner.Config{
 		AppName:        cfg.App.Name,
@@ -64,22 +117,22 @@ func main() {
 		chat   *chat.Handler
 	}{
 		system: system.NewHandler(cfg.App.Name, cfg.App.Version, cfg.App.Env),
-		chat:   chat.NewHandler(rnr, zepClient, sessionService),
+		chat:   chat.NewHandler(rnr, chatRepo),
 	}
 
 	r := chi.NewRouter()
 
-	r.Use(chiMiddleware.RequestID)
-	r.Use(chiMiddleware.RealIP)
-	r.Use(chiMiddleware.Logger)
-	r.Use(chiMiddleware.Recoverer)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
 	r.Get("/", h.system.Index)
 
 	r.Group(func(r chi.Router) {
 		r.Use(identity.RequireUserID)
 
-		r.Post("/chat", h.chat.HandleChat)
+		r.Post("/chat", h.chat.Message)
 	})
 
 	s := &http.Server{

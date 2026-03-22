@@ -17,19 +17,17 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		App: &App{
 			Name:    "zee-agent",
-			Version: "v0.1.0",
+			Version: "v0.2.0",
 		},
 		Server: &Server{
 			Port:         "8080",
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 10 * time.Second,
+			ReadTimeout:  16 * time.Second,
+			WriteTimeout: 120 * time.Second,
 			IdleTimeout:  120 * time.Second,
 		},
 		Zep:    &Zep{},
 		ZeeAPI: &ZeeAPI{},
-		Groq: &Groq{
-			BaseURL: "https://api.groq.com/openai/v1",
-		},
+		Gemini: &Gemini{},
 	}
 
 	if err := cleanenv.ReadEnv(cfg.App); err != nil {
@@ -48,8 +46,8 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to load zee config: %w", err)
 	}
 
-	if err := cleanenv.ReadEnv(cfg.Groq); err != nil {
-		return nil, fmt.Errorf("failed to load groq config: %w", err)
+	if err := cleanenv.ReadEnv(cfg.Gemini); err != nil {
+		return nil, fmt.Errorf("failed to load gemini config: %w", err)
 	}
 
 	return cfg, nil
