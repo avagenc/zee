@@ -91,13 +91,7 @@ func main() {
 		log.Fatalf("Failed to create agent: %v", err)
 	}
 
-	zepOpts := []option.RequestOption{
-		option.WithAPIKey(cfg.Zep.APIKey),
-	}
-	if cfg.Zep.URL != "" {
-		zepOpts = append(zepOpts, option.WithBaseURL(cfg.Zep.URL))
-	}
-	zepClient := client.NewClient(zepOpts...)
+	zepClient := client.NewClient(option.WithAPIKey(cfg.Zep.APIKey))
 
 	sessionService := zep.NewADKSessionService(zepClient, agent.Name(), 6)
 

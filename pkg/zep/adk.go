@@ -54,6 +54,21 @@ func (s *adkSessionService) Get(ctx context.Context, req *session.GetRequest) (*
 		return &session.GetResponse{Session: sess}, nil
 	}
 
+	contextResp, ctxErr := s.client.Thread.GetUserContext(ctx, req.SessionID, &zep.ThreadGetUserContextRequest{})
+	if ctxErr != nil {
+		log.Printf("failed to fetch user context from zep for session %s: %v", req.SessionID, ctxErr)
+	} else if contextResp != nil && contextResp.GetContext() != nil {
+		ctxStr := *contextResp.GetContext()
+		if ctxStr != "" {
+			evt := session.NewEvent("context-injection")
+			evt.Author = "user"
+			evt.LLMResponse = model.LLMResponse{
+				Content: genai.NewContentFromText(ctxStr, genai.Role("user")),
+			}
+			sess.events = append(sess.events, evt)
+		}
+	}
+
 	for _, msg := range resp.GetMessages() {
 		if msg == nil {
 			continue
