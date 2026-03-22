@@ -1,17 +1,14 @@
 package chat
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 
 	"github.com/avagenc/zee-agent/pkg/api"
-	"github.com/getzep/zep-go/v3"
-	zepclient "github.com/getzep/zep-go/v3/client"
-	"github.com/google/uuid"
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/runner"
-	"google.golang.org/adk/session"
 	"google.golang.org/genai"
 )
 
@@ -23,21 +20,24 @@ type ChatResponse struct {
 	Response string `json:"response"`
 }
 
-type Handler struct {
-	rnr            *runner.Runner
-	zepClient      *zepclient.Client
-	sessionService session.Service
+type Repository interface {
+	UpsertUser(ctx context.Context, userID string) error
+	GetOrCreateThreadID(ctx context.Context, userID string) (string, error)
 }
 
-func NewHandler(rnr *runner.Runner, zepClient *zepclient.Client, sessionService session.Service) *Handler {
+type Handler struct {
+	rnr  *runner.Runner
+	repo Repository
+}
+
+func NewHandler(rnr *runner.Runner, repo Repository) *Handler {
 	return &Handler{
-		rnr:            rnr,
-		zepClient:      zepClient,
-		sessionService: sessionService,
+		rnr:  rnr,
+		repo: repo,
 	}
 }
 
-func (h *Handler) HandleChat(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Message(w http.ResponseWriter, r *http.Request) {
 	var req ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		api.WriteError(w, api.NewError(http.StatusBadRequest, "INVALID_REQUEST", "Failed to parse JSON body"))
@@ -55,37 +55,15 @@ func (h *Handler) HandleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.zepClient.User.Add(r.Context(), &zep.CreateUserRequest{
-		UserID: userID,
-	})
-	if err != nil {
-		log.Printf("zep user upsert (non-fatal): %v", err)
-	}
-
-	var threadID string
-	threads, err := h.zepClient.User.GetThreads(r.Context(), userID)
-	if err == nil && len(threads) > 0 {
-		threadID = *threads[0].ThreadID
-	} else {
-		threadID = uuid.New().String()
-		_, err = h.zepClient.Thread.Create(r.Context(), &zep.CreateThreadRequest{
-			ThreadID: threadID,
-			UserID:   userID,
-		})
-		if err != nil {
-			log.Printf("failed to create zep thread: %v", err)
-			api.WriteError(w, api.NewError(http.StatusInternalServerError, "AGENT_ERROR", "Failed to create conversation thread: "+err.Error()))
-			return
+	go func() {
+		if err := h.repo.UpsertUser(context.Background(), userID); err != nil {
+			log.Printf("zep user upsert (non-fatal): %v", err)
 		}
-	}
+	}()
 
-	_, err = h.sessionService.Create(r.Context(), &session.CreateRequest{
-		AppName:   "zee-agent",
-		UserID:    userID,
-		SessionID: threadID,
-	})
+	threadID, err := h.repo.GetOrCreateThreadID(r.Context(), userID)
 	if err != nil {
-		api.WriteError(w, api.NewError(http.StatusInternalServerError, "AGENT_ERROR", "Failed to initialize session: "+err.Error()))
+		api.WriteError(w, api.NewError(http.StatusInternalServerError, "AGENT_ERROR", "Failed to setup conversation thread: "+err.Error()))
 		return
 	}
 
