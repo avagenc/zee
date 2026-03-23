@@ -2,7 +2,7 @@ package chat
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"sync"
 
 	"github.com/getzep/zep-go/v3"
@@ -46,7 +46,7 @@ func (r *repository) GetOrCreateThreadID(ctx context.Context, userID string) (st
 		UserID:   userID,
 	})
 	if err != nil {
-		log.Printf("zep create thread (non-fatal, continuing statelessly): %v", err)
+		fmt.Printf("zep create thread (non-fatal, continuing statelessly): %v\n", err)
 	}
 
 	r.userThreadCache.Store(userID, threadID)

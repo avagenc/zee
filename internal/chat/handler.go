@@ -3,7 +3,7 @@ package chat
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 	"net/http"
 
 	"github.com/avagenc/zee-agent/pkg/api"
@@ -57,7 +57,7 @@ func (h *Handler) Message(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		if err := h.repo.UpsertUser(context.Background(), userID); err != nil {
-			log.Printf("zep user upsert (non-fatal): %v", err)
+			fmt.Printf("zep user upsert (non-fatal): %v\n", err)
 		}
 	}()
 

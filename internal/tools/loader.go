@@ -2,7 +2,6 @@ package tools
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/avagenc/zee-agent/pkg/zeeapi"
 	"google.golang.org/adk/tool"
@@ -23,15 +22,11 @@ func Load(client *zeeapi.Client) (*Tool, error) {
 		},
 		func(ctx tool.Context, args struct{}) (any, error) {
 			userID := ctx.UserID()
-			if userID == "" {
-				return nil, fmt.Errorf("missing user identity")
-			}
 			result, err := client.GetAccount(ctx, userID)
 			if err != nil {
-				log.Printf("[tool:get_account] error for user %s: %v", userID, err)
+				fmt.Printf("[tool:get_account] error: %v\n", err)
 				return nil, err
 			}
-			log.Printf("[tool:get_account] success for user %s", userID)
 			return result, nil
 		},
 	)
@@ -46,15 +41,11 @@ func Load(client *zeeapi.Client) (*Tool, error) {
 		},
 		func(ctx tool.Context, args struct{}) (map[string]any, error) {
 			userID := ctx.UserID()
-			if userID == "" {
-				return nil, fmt.Errorf("missing user identity")
-			}
 			result, err := client.ListDevices(ctx, userID)
 			if err != nil {
-				log.Printf("[tool:list_devices] error for user %s: %v", userID, err)
+				fmt.Printf("[tool:list_devices] error: %v\n", err)
 				return nil, err
 			}
-			log.Printf("[tool:list_devices] success for user %s", userID)
 			return map[string]any{"devices": result}, nil
 		},
 	)
@@ -72,15 +63,11 @@ func Load(client *zeeapi.Client) (*Tool, error) {
 			Commands any    `json:"commands"`
 		}) (any, error) {
 			userID := ctx.UserID()
-			if userID == "" {
-				return nil, fmt.Errorf("missing user identity")
-			}
 			result, err := client.SendCommands(ctx, userID, args.DeviceID, args.Commands)
 			if err != nil {
-				log.Printf("[tool:send_commands_to_a_device] error for user %s, device %s: %v", userID, args.DeviceID, err)
+				fmt.Printf("[tool:send_commands_to_a_device] error: %v\n", err)
 				return nil, err
 			}
-			log.Printf("[tool:send_commands_to_a_device] success for user %s, device %s", userID, args.DeviceID)
 			return result, nil
 		},
 	)
