@@ -2,8 +2,8 @@ package zep
 
 import (
 	"context"
+	"fmt"
 	"iter"
-	"log"
 	"strings"
 	"time"
 
@@ -50,13 +50,13 @@ func (s *adkSessionService) Get(ctx context.Context, req *session.GetRequest) (*
 		Lastn: zep.Int(s.contextWindowLength),
 	})
 	if err != nil {
-		log.Printf("failed to fetch thread messages from zep: %v", err)
+		fmt.Printf("failed to fetch thread messages from zep: %v\n", err)
 		return &session.GetResponse{Session: sess}, nil
 	}
 
 	contextResp, ctxErr := s.client.Thread.GetUserContext(ctx, req.SessionID, &zep.ThreadGetUserContextRequest{})
 	if ctxErr != nil {
-		log.Printf("failed to fetch user context from zep for session %s: %v", req.SessionID, ctxErr)
+		fmt.Printf("failed to fetch user context from zep: %v\n", ctxErr)
 	} else if contextResp != nil && contextResp.GetContext() != nil {
 		ctxStr := *contextResp.GetContext()
 		if ctxStr != "" {
@@ -133,7 +133,7 @@ func (s *adkSessionService) AppendEvent(ctx context.Context, sess session.Sessio
 			}},
 		})
 		if err != nil {
-			log.Printf("failed to append message to zep thread async: %v", err)
+			fmt.Printf("failed to append message to zep thread async: %v\n", err)
 		}
 	}()
 

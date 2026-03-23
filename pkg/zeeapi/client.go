@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/avagenc/zee-agent/pkg/api"
@@ -47,8 +46,6 @@ func (c *Client) doRequest(ctx context.Context, method, path, userID string, bod
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	log.Printf("[zeeapi] %s %s (x-user-id: %s)", method, url, userID)
-
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("execute request %s %s: %w", method, path, err)
@@ -60,18 +57,12 @@ func (c *Client) doRequest(ctx context.Context, method, path, userID string, bod
 		return fmt.Errorf("read response body: %w", err)
 	}
 
-	log.Printf("[zeeapi] %s %s => %d (%d bytes)", method, url, resp.StatusCode, len(respBody))
-
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		log.Printf("[zeeapi] error body: %s", string(respBody))
 		return fmt.Errorf("zee api error (status %d): %s", resp.StatusCode, string(respBody))
 	}
 
-	log.Printf("[zeeapi] response body: %s", string(respBody))
-
 	if target != nil {
 		if err := json.Unmarshal(respBody, target); err != nil {
-			log.Printf("[zeeapi] failed to decode response from %s %s: %v (body: %s)", method, url, err, string(respBody))
 			return fmt.Errorf("decode response body: %w", err)
 		}
 	}
