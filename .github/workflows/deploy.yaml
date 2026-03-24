@@ -57,6 +57,6 @@ jobs:
 
           env_vars: |
             APP_ENV=${{ env.APP_ENV }}
-            ZEE_API_KEY=${{ secrets.ZEE_API_KEY }}
+            ZEP_API_KEY=${{ secrets.ZEP_API_KEY }}
             ZEE_API_URL=${{ vars.ZEE_API_URL }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
