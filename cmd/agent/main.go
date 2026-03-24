@@ -16,6 +16,7 @@ import (
 	"github.com/getzep/zep-go/v3/option"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"google.golang.org/api/idtoken"
 
 	"google.golang.org/adk/agent/llmagent"
 	"google.golang.org/adk/model/gemini"
@@ -37,7 +38,12 @@ func main() {
 		log.Fatalf("Failed to assign Gemini model: %v", err)
 	}
 
-	zeeAPIClient := zeeapi.NewClient(cfg.ZeeAPI.URL, http.DefaultClient)
+	oidcClient, err := idtoken.NewClient(context.Background(), cfg.ZeeAPI.URL)
+	if err != nil {
+		log.Fatalf("FATAL: Failed to create OIDC client for zee-api: %v", err)
+	}
+
+	zeeAPIClient := zeeapi.NewClient(cfg.ZeeAPI.URL, oidcClient)
 
 	t, err := tools.Load(zeeAPIClient)
 	if err != nil {
