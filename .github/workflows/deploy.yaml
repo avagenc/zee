@@ -33,14 +33,6 @@ jobs:
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Run Migrations
-        run: |
-          docker run --rm -v ${{ github.workspace }}/migrations:/migrations \
-            migrate/migrate:v4.18.1 \
-            -path=/migrations/ \
-            -database "${{ secrets.DATABASE_URL }}" \
-            up
-
       - name: Build and Push Docker Image
         env:
           IMAGE_URL: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
