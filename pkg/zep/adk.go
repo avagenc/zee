@@ -61,9 +61,12 @@ func (s *adkSessionService) Get(ctx context.Context, req *session.GetRequest) (*
 		ctxStr := *contextResp.GetContext()
 		if ctxStr != "" {
 			evt := session.NewEvent("context-injection")
-			evt.Author = "user"
+			evt.Author = "Zep (Context Engine)"
+
+			wrappedCtx := fmt.Sprintf("[SYSTEM BACKGROUND CONTEXT - DO NOT ACKNOWLEDGE DIRECTLY]\n%s\n[END BACKGROUND CONTEXT]", ctxStr)
+
 			evt.LLMResponse = model.LLMResponse{
-				Content: genai.NewContentFromText(ctxStr, genai.Role("user")),
+				Content: genai.NewContentFromText(wrappedCtx, genai.Role("user")),
 			}
 			sess.events = append(sess.events, evt)
 		}
