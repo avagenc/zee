@@ -52,3 +52,28 @@ func (r *repository) GetOrCreateThreadID(ctx context.Context, userID string) (st
 	r.userThreadCache.Store(userID, threadID)
 	return threadID, nil
 }
+
+func (r *repository) SaveMessages(ctx context.Context, threadID string, userMsg string, assistantMsg string) error {
+	var messages []*zep.Message
+	if userMsg != "" {
+		messages = append(messages, &zep.Message{
+			Role:    zep.RoleTypeUserRole,
+			Content: userMsg,
+		})
+	}
+	if assistantMsg != "" {
+		messages = append(messages, &zep.Message{
+			Role:    zep.RoleTypeAssistantRole,
+			Content: assistantMsg,
+		})
+	}
+
+	if len(messages) == 0 {
+		return nil
+	}
+
+	_, err := r.zepClient.Thread.AddMessages(ctx, threadID, &zep.AddThreadMessagesRequest{
+		Messages: messages,
+	})
+	return err
+}

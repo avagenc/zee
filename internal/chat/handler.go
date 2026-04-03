@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/avagenc/zee-agent/pkg/api"
 	"google.golang.org/adk/agent"
@@ -23,6 +24,7 @@ type ChatResponse struct {
 type Repository interface {
 	UpsertUser(ctx context.Context, userID string) error
 	GetOrCreateThreadID(ctx context.Context, userID string) (string, error)
+	SaveMessages(ctx context.Context, threadID string, userMsg string, assistantMsg string) error
 }
 
 type Handler struct {
@@ -84,6 +86,14 @@ func (h *Handler) Message(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	go func(msg, resp string) {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := h.repo.SaveMessages(bgCtx, threadID, msg, resp); err != nil {
+			fmt.Printf("failed to save messages to zep (non-fatal): %v\n", err)
+		}
+	}(req.Message, fullResponse)
 
 	api.WriteSuccess(w, http.StatusOK, "SUCCESS", "Message processed", ChatResponse{
 		Response: fullResponse,

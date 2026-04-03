@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"iter"
-	"strings"
 	"time"
 
 	"github.com/getzep/zep-go/v3"
@@ -107,49 +106,7 @@ func (s *adkSessionService) AppendEvent(ctx context.Context, sess session.Sessio
 	if impl, ok := sess.(*zepSession); ok {
 		impl.events = append(impl.events, event)
 	}
-
-	if sess.ID() == "" {
-		return nil
-	}
-
-	content := event.LLMResponse.Content
-	if content == nil || len(content.Parts) == 0 {
-		return nil
-	}
-
-	if containsFunctionParts(content.Parts) {
-		return nil
-	}
-
-	text := extractText(content.Parts)
-	if text == "" {
-		return nil
-	}
-
-	go func() {
-		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_, err := s.client.Thread.AddMessages(bgCtx, sess.ID(), &zep.AddThreadMessagesRequest{
-			Messages: []*zep.Message{{
-				Role:    s.adkRoleToZep(string(content.Role)),
-				Content: text,
-			}},
-		})
-		if err != nil {
-			fmt.Printf("failed to append message to zep thread async: %v\n", err)
-		}
-	}()
-
 	return nil
-}
-
-func containsFunctionParts(parts []*genai.Part) bool {
-	for _, p := range parts {
-		if p.FunctionCall != nil || p.FunctionResponse != nil {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *adkSessionService) zepRoleToADK(role zep.RoleType) string {
@@ -159,26 +116,11 @@ func (s *adkSessionService) zepRoleToADK(role zep.RoleType) string {
 	return "user"
 }
 
-func (s *adkSessionService) adkRoleToZep(role string) zep.RoleType {
-	if role == "model" || role == s.agentName {
-		return zep.RoleTypeAssistantRole
-	}
-	return zep.RoleTypeUserRole
-}
-
 func derefOrEmpty(s *string) string {
 	if s == nil {
 		return ""
 	}
 	return *s
-}
-
-func extractText(parts []*genai.Part) string {
-	var b strings.Builder
-	for _, p := range parts {
-		b.WriteString(p.Text)
-	}
-	return b.String()
 }
 
 type zepSession struct {
