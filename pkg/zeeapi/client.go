@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/avagenc/zee-agent/pkg/api"
+	"go.avagenc.com/api"
 )
 
 type Client struct {

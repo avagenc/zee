@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/avagenc/zee-agent/pkg/api"
+	"go.avagenc.com/api"
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/runner"
 	"google.golang.org/genai"

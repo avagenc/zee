@@ -3,7 +3,7 @@ package system
 import (
 	"net/http"
 
-	"github.com/avagenc/zee-agent/pkg/api"
+	"go.avagenc.com/api"
 )
 
 type Handler struct {

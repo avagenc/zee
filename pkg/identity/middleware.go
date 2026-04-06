@@ -3,7 +3,7 @@ package identity
 import (
 	"net/http"
 
-	"github.com/avagenc/zee-agent/pkg/api"
+	"go.avagenc.com/api"
 )
 
 func RequireUserID(next http.Handler) http.Handler {
