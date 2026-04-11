@@ -36,8 +36,3 @@ type ZeeAPI struct {
 type Gemini struct {
 	APIKey string `env:"GEMINI_API_KEY" env-required:"true"`
 }
-
-type AgenticReminder struct {
-	Key string `env:"AGENTIC_REMINDER_KEY" env-required:"true"`
-	GCPCloudTasksQueuePath string `env:"AGENTIC_REMINDER_GCP_CLOUD_TASK_QUEUE_PATH" env-required:"true"`
-}

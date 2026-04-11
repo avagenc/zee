@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/joho/godotenv v1.5.1
-	go.avagenc.com/api v1.1.0
+	go.ibnfadl.com/api v1.0.0
 	google.golang.org/adk v0.5.0
 	google.golang.org/api v0.273.1
 	google.golang.org/genai v1.47.0

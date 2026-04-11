@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"go.avagenc.com/api"
+	"go.ibnfadl.com/api"
 )
 
 type Client struct {
