@@ -7,9 +7,10 @@ import (
 	"net/http"
 	"time"
 
+	"go.ibnfadl.com/adk/agent"
+	"go.ibnfadl.com/adk/runner"
 	"go.ibnfadl.com/api"
-	"google.golang.org/adk/agent"
-	"google.golang.org/adk/runner"
+	"go.ibnfadl.com/api/identity"
 	"google.golang.org/genai"
 )
 
@@ -51,7 +52,7 @@ func (h *Handler) Message(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := api.GetUserIDFromContext(r.Context())
+	userID, err := identity.GetUserIDFromContext(r.Context())
 	if err != nil || userID == "" {
 		api.WriteError(w, api.NewError(http.StatusUnauthorized, "UNAUTHORIZED", "Missing user identity"))
 		return

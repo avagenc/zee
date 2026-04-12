@@ -3,9 +3,9 @@ package tools
 import (
 	"fmt"
 
-	"github.com/avagenc/zee-agent/pkg/zeeapi"
-	"google.golang.org/adk/tool"
-	"google.golang.org/adk/tool/functiontool"
+	"github.com/avagenc/zee-agent/internal/zeeapi"
+	"go.ibnfadl.com/adk/tool"
+	"go.ibnfadl.com/adk/tool/functiontool"
 )
 
 type Tool struct {

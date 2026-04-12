@@ -9,19 +9,19 @@ import (
 	"github.com/avagenc/zee-agent/internal/config"
 	"github.com/avagenc/zee-agent/internal/system"
 	"github.com/avagenc/zee-agent/internal/tools"
-	"github.com/avagenc/zee-agent/pkg/zeeapi"
-	"github.com/avagenc/zee-agent/pkg/zep"
+	"github.com/avagenc/zee-agent/internal/zeeapi"
 	"github.com/getzep/zep-go/v3/client"
 	"github.com/getzep/zep-go/v3/option"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"go.ibnfadl.com/adk/session/zep"
 	"go.ibnfadl.com/api/identity"
 	"google.golang.org/api/idtoken"
 
-	"google.golang.org/adk/agent/llmagent"
-	"google.golang.org/adk/model/gemini"
-	"google.golang.org/adk/runner"
-	"google.golang.org/adk/tool"
+	"go.ibnfadl.com/adk/agent/llmagent"
+	"go.ibnfadl.com/adk/model/gemini"
+	"go.ibnfadl.com/adk/runner"
+	"go.ibnfadl.com/adk/tool"
 	"google.golang.org/genai"
 )
 
@@ -99,7 +99,7 @@ func main() {
 
 	zepClient := client.NewClient(option.WithAPIKey(cfg.Zep.APIKey))
 
-	sessionService := zep.NewADKSessionService(zepClient, agent.Name(), 6)
+	sessionService := zep.NewSessionService(zepClient, agent.Name(), 6)
 
 	chatRepo := chat.NewRepository(zepClient)
 
