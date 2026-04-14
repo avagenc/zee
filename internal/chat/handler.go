@@ -7,11 +7,12 @@ import (
 	"net/http"
 	"time"
 
+	"google.golang.org/genai"
+
 	"go.ibnfadl.com/adk/agent"
 	"go.ibnfadl.com/adk/runner"
 	"go.ibnfadl.com/api"
 	"go.ibnfadl.com/api/identity"
-	"google.golang.org/genai"
 )
 
 type ChatRequest struct {

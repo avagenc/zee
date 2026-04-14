@@ -11,19 +11,25 @@ import (
 	"go.ibnfadl.com/api"
 )
 
-type Client struct {
+type Client interface {
+	GetAccount(ctx context.Context, userID string) (any, error)
+	ListDevices(ctx context.Context, userID string) (any, error)
+	SendCommands(ctx context.Context, userID string, deviceID string, commands any) (any, error)
+}
+
+type client struct {
 	baseURL    string
 	httpClient *http.Client
 }
 
-func NewClient(baseURL string, httpClient *http.Client) *Client {
-	return &Client{
+func NewClient(baseURL string, httpClient *http.Client) Client {
+	return &client{
 		baseURL:    baseURL,
 		httpClient: httpClient,
 	}
 }
 
-func (c *Client) doRequest(ctx context.Context, method, path, userID string, body any, target any) error {
+func (c *client) doRequest(ctx context.Context, method, path, userID string, body any, target any) error {
 	var bodyReader io.Reader
 	if body != nil {
 		reqBody, err := json.Marshal(body)
@@ -70,7 +76,7 @@ func (c *Client) doRequest(ctx context.Context, method, path, userID string, bod
 	return nil
 }
 
-func (c *Client) GetAccount(ctx context.Context, userID string) (any, error) {
+func (c *client) GetAccount(ctx context.Context, userID string) (any, error) {
 	var res api.Response[any]
 	if err := c.doRequest(ctx, http.MethodGet, "/account", userID, nil, &res); err != nil {
 		return nil, err
@@ -81,7 +87,7 @@ func (c *Client) GetAccount(ctx context.Context, userID string) (any, error) {
 	return res.Data, nil
 }
 
-func (c *Client) ListDevices(ctx context.Context, userID string) (any, error) {
+func (c *client) ListDevices(ctx context.Context, userID string) (any, error) {
 	var res api.Response[any]
 	if err := c.doRequest(ctx, http.MethodGet, "/devices", userID, nil, &res); err != nil {
 		return nil, err
@@ -92,7 +98,7 @@ func (c *Client) ListDevices(ctx context.Context, userID string) (any, error) {
 	return res.Data, nil
 }
 
-func (c *Client) SendCommands(ctx context.Context, userID string, deviceID string, commands any) (any, error) {
+func (c *client) SendCommands(ctx context.Context, userID string, deviceID string, commands any) (any, error) {
 	reqBody := map[string]any{"commands": commands}
 	var res api.Response[any]
 	path := fmt.Sprintf("/devices/%s/commands", deviceID)

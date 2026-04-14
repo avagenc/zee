@@ -1,12 +1,18 @@
 package tools
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/avagenc/zee-agent/internal/zeeapi"
 	"go.ibnfadl.com/adk/tool"
 	"go.ibnfadl.com/adk/tool/functiontool"
 )
+
+type ZeeAPIClient interface {
+	GetAccount(ctx context.Context, userID string) (any, error)
+	ListDevices(ctx context.Context, userID string) (any, error)
+	SendCommands(ctx context.Context, userID string, deviceID string, commands any) (any, error)
+}
 
 type Tool struct {
 	GetAccount            tool.Tool
@@ -14,7 +20,7 @@ type Tool struct {
 	SendCommandsToADevice tool.Tool
 }
 
-func Load(client *zeeapi.Client) (*Tool, error) {
+func Load(client ZeeAPIClient) (*Tool, error) {
 	getAccount, err := functiontool.New(
 		functiontool.Config{
 			Name:        "get_account",

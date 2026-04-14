@@ -10,19 +10,20 @@ import (
 	"github.com/avagenc/zee-agent/internal/system"
 	"github.com/avagenc/zee-agent/internal/tools"
 	"github.com/avagenc/zee-agent/internal/zeeapi"
+
 	"github.com/getzep/zep-go/v3/client"
 	"github.com/getzep/zep-go/v3/option"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"go.ibnfadl.com/adk/session/zep"
-	"go.ibnfadl.com/api/identity"
 	"google.golang.org/api/idtoken"
+	"google.golang.org/genai"
 
+	"go.ibnfadl.com/api/identity"
 	"go.ibnfadl.com/adk/agent/llmagent"
 	"go.ibnfadl.com/adk/model/gemini"
 	"go.ibnfadl.com/adk/runner"
+	"go.ibnfadl.com/adk/session/zep"
 	"go.ibnfadl.com/adk/tool"
-	"google.golang.org/genai"
 )
 
 func main() {
