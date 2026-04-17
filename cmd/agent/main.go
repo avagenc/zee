@@ -18,12 +18,14 @@ import (
 	"google.golang.org/api/idtoken"
 	"google.golang.org/genai"
 
-	"go.ibnfadl.com/api/identity"
-	"go.ibnfadl.com/adk/agent/llmagent"
-	"go.ibnfadl.com/adk/model/gemini"
-	"go.ibnfadl.com/adk/runner"
-	"go.ibnfadl.com/adk/session/zep"
-	"go.ibnfadl.com/adk/tool"
+
+	"google.golang.org/adk/agent/llmagent"
+	"google.golang.org/adk/model/gemini"
+	"google.golang.org/adk/runner"
+	"google.golang.org/adk/tool"
+
+	"go.naturallyfunny.dev/adk/zep"
+	"go.naturallyfunny.dev/api/identity"
 )
 
 func main() {

@@ -3,7 +3,7 @@ package system
 import (
 	"net/http"
 
-	"go.ibnfadl.com/api"
+	"go.naturallyfunny.dev/api"
 )
 
 type Handler struct {

@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"go.ibnfadl.com/api"
+	"go.naturallyfunny.dev/api"
 )
 
 type Client interface {

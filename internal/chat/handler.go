@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"google.golang.org/genai"
+	"google.golang.org/adk/agent"
+	"google.golang.org/adk/runner"
 
-	"go.ibnfadl.com/adk/agent"
-	"go.ibnfadl.com/adk/runner"
-	"go.ibnfadl.com/api"
-	"go.ibnfadl.com/api/identity"
+	"go.naturallyfunny.dev/api"
+	"go.naturallyfunny.dev/api/identity"
 )
 
 type ChatRequest struct {

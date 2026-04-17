@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"go.ibnfadl.com/adk/tool"
-	"go.ibnfadl.com/adk/tool/functiontool"
+	"google.golang.org/adk/tool"
+	"google.golang.org/adk/tool/functiontool"
 )
 
 type ZeeAPIClient interface {
