@@ -133,7 +133,7 @@ func main() {
 	r.Get("/", h.system.Index)
 
 	r.Group(func(r chi.Router) {
-		r.Use(identity.RequireUserID)
+		r.Use(identity.WithUserID)
 
 		r.Post("/chat", h.chat.Message)
 	})

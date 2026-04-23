@@ -44,18 +44,18 @@ func NewHandler(rnr *runner.Runner, repo Repository) *Handler {
 func (h *Handler) Message(w http.ResponseWriter, r *http.Request) {
 	var req ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		api.WriteError(w, api.NewError(http.StatusBadRequest, "INVALID_REQUEST", "Failed to parse JSON body"))
+		api.WriteError(w, api.NewError(api.InvalidArgument, "Failed to parse JSON body"))
 		return
 	}
 
 	if req.Message == "" {
-		api.WriteError(w, api.NewError(http.StatusBadRequest, "INVALID_REQUEST", "Field 'message' cannot be empty"))
+		api.WriteError(w, api.NewError(api.InvalidArgument, "Field 'message' cannot be empty"))
 		return
 	}
 
 	userID, err := identity.GetUserIDFromContext(r.Context())
 	if err != nil || userID == "" {
-		api.WriteError(w, api.NewError(http.StatusUnauthorized, "UNAUTHORIZED", "Missing user identity"))
+		api.WriteError(w, api.NewError(api.Unauthenticated, "Missing user identity"))
 		return
 	}
 
@@ -67,7 +67,7 @@ func (h *Handler) Message(w http.ResponseWriter, r *http.Request) {
 
 	threadID, err := h.repo.GetOrCreateThreadID(r.Context(), userID)
 	if err != nil {
-		api.WriteError(w, api.NewError(http.StatusInternalServerError, "AGENT_ERROR", "Failed to setup conversation thread: "+err.Error()))
+		api.WriteError(w, api.NewError(api.Internal, "Failed to setup conversation thread: "+err.Error()))
 		return
 	}
 
@@ -77,7 +77,7 @@ func (h *Handler) Message(w http.ResponseWriter, r *http.Request) {
 	var fullResponse string
 	for event, err := range events {
 		if err != nil {
-			api.WriteError(w, api.NewError(http.StatusInternalServerError, "AGENT_ERROR", err.Error()))
+			api.WriteError(w, api.NewError(api.Internal, err.Error()))
 			return
 		}
 		if event.Content != nil {
@@ -97,7 +97,7 @@ func (h *Handler) Message(w http.ResponseWriter, r *http.Request) {
 		}
 	}(req.Message, fullResponse)
 
-	api.WriteSuccess(w, http.StatusOK, "SUCCESS", "Message processed", ChatResponse{
+	api.WriteSuccess(w, api.OK, "Message processed", ChatResponse{
 		Response: fullResponse,
 	}, nil)
 }
