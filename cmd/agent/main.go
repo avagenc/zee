@@ -66,7 +66,7 @@ func main() {
 		Model:       model,
 		Tools:       tuyaTools,
 		Description: "Tuya Smart Home Agent — direct user channel",
-		Instruction: zee.UserInstruction,
+		Instruction: zee.SystemInstruction(),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create user-channel agent: %v", err)
@@ -77,7 +77,7 @@ func main() {
 		Model:       model,
 		Tools:       tuyaTools,
 		Description: "Tuya Smart Home Agent — Ava orchestrator channel",
-		Instruction: zee.AvaInstruction,
+		Instruction: zee.SystemInstruction(zee.ForAva()),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create ava-channel agent: %v", err)
