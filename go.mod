@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/joho/godotenv v1.5.1
-	go.naturallyfunny.dev/adk v1.1.3
+	go.naturallyfunny.dev/adk v1.1.4
 	go.naturallyfunny.dev/api v1.5.1
 	google.golang.org/adk v1.1.0
 	google.golang.org/api v0.276.0
