@@ -55,14 +55,8 @@ github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0t
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-go.naturallyfunny.dev/adk v1.0.0 h1:+Tn8eUWiog/WF3NEghorDhVBIUpnfp0b7TVM6h7ZWtI=
-go.naturallyfunny.dev/adk v1.0.0/go.mod h1:WADBXdlj73tgTmqEPpfngwUcGKYJZR9y+owEavMrbj4=
-go.naturallyfunny.dev/adk v1.1.3 h1:GKwXc73swF8JJCgf9oZsTx+7Gprbfsl9m13ZuPebKTU=
-go.naturallyfunny.dev/adk v1.1.3/go.mod h1:Iq9/96CLVThLobP2mGD1Bfd+VWTnTioADGgDree9lNQ=
-go.naturallyfunny.dev/adk v1.1.4 h1:XXRieSvi4Fk8LSuLflVRjDk0zrGolCq/izhwmx8E2Xc=
-go.naturallyfunny.dev/adk v1.1.4/go.mod h1:Iq9/96CLVThLobP2mGD1Bfd+VWTnTioADGgDree9lNQ=
-go.naturallyfunny.dev/adk v1.1.5 h1:5N0i8wvmf9Nn72avUS2nImIk4+h6SHT7UnasdNPxuQA=
-go.naturallyfunny.dev/adk v1.1.5/go.mod h1:Iq9/96CLVThLobP2mGD1Bfd+VWTnTioADGgDree9lNQ=
+go.naturallyfunny.dev/adk v1.1.7 h1:S6K88wEuINe67qYw8Ueg6a+Xh5emdCBGxeWvnpXp+oI=
+go.naturallyfunny.dev/adk v1.1.7/go.mod h1:VugI8NXuugXGRYFPxvC16upBx328zCkHV+BvULbV1BA=
 go.naturallyfunny.dev/api v1.5.1 h1:7aij/TEuXpLHpsgs68+6/7fEp9sxKrE52BbAQkF3Buw=
 go.naturallyfunny.dev/api v1.5.1/go.mod h1:l8a+fA+ze+Y7m+QE0w6e8wyh/N3pvvE90R1WEqDMGYM=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
