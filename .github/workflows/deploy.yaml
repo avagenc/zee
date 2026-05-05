@@ -15,8 +15,8 @@ jobs:
       APP_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
       REGION: asia-southeast1
       REPO_NAME: docker
-      SERVICE_NAME: zee-agent
-      IMAGE_NAME: zee-agent
+      SERVICE_NAME: zee
+      IMAGE_NAME: zee
 
     steps:
       - name: Checkout Code
@@ -53,7 +53,7 @@ jobs:
             --min-instances=0
             --max-instances=1
             --cpu-boost
-            --service-account=${{ vars.GCP_RUNTIME_SA_EMAIL }}
+            --service-account=${{ vars.GCP_SA_EMAIL }}
 
           env_vars: |
             APP_ENV=${{ env.APP_ENV }}
