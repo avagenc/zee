@@ -7,7 +7,7 @@ require (
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/joho/godotenv v1.5.1
-	go.naturallyfunny.dev/adk v1.1.7
+	go.naturallyfunny.dev/adk v1.1.12
 	go.naturallyfunny.dev/api v1.5.1
 	google.golang.org/adk v1.1.0
 	google.golang.org/api v0.276.0
