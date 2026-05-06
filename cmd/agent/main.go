@@ -90,6 +90,7 @@ func main() {
 		zee.Name,
 		zepadk.WithConversationHistory(6),
 		zepadk.WithKnowledgeContext(nil),
+		zepadk.WithUserDisplayName("human"),
 	)
 
 	userRunner, err := runner.New(runner.Config{
