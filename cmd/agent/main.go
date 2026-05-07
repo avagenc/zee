@@ -85,18 +85,16 @@ func main() {
 
 	zepClient := client.NewClient(option.WithAPIKey(cfg.Zep.APIKey))
 
-	sessionService := zepadk.NewSessionService(
-		zepClient,
-		zee.Name,
-		zepadk.WithConversationHistory(6),
-		zepadk.WithKnowledgeContext(nil),
-		zepadk.WithUserDisplayName("human"),
-	)
-
 	userRunner, err := runner.New(runner.Config{
-		AppName:           cfg.App.Name,
-		Agent:             zeeForUser,
-		SessionService:    sessionService,
+		AppName: cfg.App.Name,
+		Agent:   zeeForUser,
+		SessionService: zepadk.NewSessionService(
+			zepClient,
+			zee.Name,
+			zepadk.WithConversationHistory(6),
+			zepadk.WithKnowledgeContext(nil),
+			zepadk.WithUserDisplayName("Human"),
+		),
 		AutoCreateSession: true,
 	})
 	if err != nil {
@@ -104,9 +102,15 @@ func main() {
 	}
 
 	avaRunner, err := runner.New(runner.Config{
-		AppName:           cfg.App.Name,
-		Agent:             zeeForAva,
-		SessionService:    sessionService,
+		AppName: cfg.App.Name,
+		Agent:   zeeForAva,
+		SessionService: zepadk.NewSessionService(
+			zepClient,
+			zee.Name,
+			zepadk.WithConversationHistory(6),
+			zepadk.WithKnowledgeContext(nil),
+			zepadk.WithUserDisplayName("Ava"),
+		),
 		AutoCreateSession: true,
 	})
 	if err != nil {
