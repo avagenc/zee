@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 
+	_ "time/tzdata"
+
 	"github.com/avagenc/zee-agent/internal/chat"
 	"github.com/avagenc/zee-agent/internal/config"
 	"github.com/avagenc/zee-agent/internal/system"
@@ -24,7 +26,8 @@ import (
 	"google.golang.org/adk/runner"
 	"google.golang.org/adk/tool"
 
-	zepadk "go.naturallyfunny.dev/adk/zep"
+	adksession "go.naturallyfunny.dev/adk/session"
+	"go.naturallyfunny.dev/adk/zep"
 	"go.naturallyfunny.dev/api/identity"
 )
 
@@ -83,18 +86,31 @@ func main() {
 		log.Fatalf("Failed to create ava-channel agent: %v", err)
 	}
 
+	conversationHistory := 6
 	zepClient := client.NewClient(option.WithAPIKey(cfg.Zep.APIKey))
 
-	userRunner, err := runner.New(runner.Config{
-		AppName: cfg.App.Name,
-		Agent:   zeeForUser,
-		SessionService: zepadk.NewSessionService(
-			zepClient,
-			zee.Name,
-			zepadk.WithConversationHistory(6),
-			zepadk.WithKnowledgeContext(nil),
-			zepadk.WithUserDisplayName("Human"),
+	humanSessSvc := adksession.Wrap(
+		zep.NewSessionService(zepClient, zee.Name,
+			zep.WithContextHistoryLength(conversationHistory),
+			zep.WithKnowledgeContext(nil),
+			zep.WithUserDisplayName("Human"),
 		),
+		adksession.WithTimezoneFromContext(identity.TimezoneKey),
+	)
+
+	avaSessSvc := adksession.Wrap(
+		zep.NewSessionService(zepClient, zee.Name,
+			zep.WithContextHistoryLength(conversationHistory),
+			zep.WithKnowledgeContext(nil),
+			zep.WithUserDisplayName("Ava"),
+		),
+		adksession.WithTimezoneFromContext(identity.TimezoneKey),
+	)
+
+	humanRunner, err := runner.New(runner.Config{
+		AppName:           cfg.App.Name,
+		Agent:             zeeForUser,
+		SessionService:    humanSessSvc,
 		AutoCreateSession: true,
 	})
 	if err != nil {
@@ -102,15 +118,9 @@ func main() {
 	}
 
 	avaRunner, err := runner.New(runner.Config{
-		AppName: cfg.App.Name,
-		Agent:   zeeForAva,
-		SessionService: zepadk.NewSessionService(
-			zepClient,
-			zee.Name,
-			zepadk.WithConversationHistory(6),
-			zepadk.WithKnowledgeContext(nil),
-			zepadk.WithUserDisplayName("Ava"),
-		),
+		AppName:           cfg.App.Name,
+		Agent:             zeeForAva,
+		SessionService:    avaSessSvc,
 		AutoCreateSession: true,
 	})
 	if err != nil {
@@ -130,8 +140,9 @@ func main() {
 
 	r.Group(func(r chi.Router) {
 		r.Use(identity.WithUserID)
+		r.Use(identity.WithUserTimezone)
 
-		r.Post("/chat", chat.Handle(userRunner))
+		r.Post("/chat", chat.Handle(humanRunner))
 		r.Post("/chat/ava", chat.Handle(avaRunner))
 	})
 
