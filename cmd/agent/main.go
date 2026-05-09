@@ -140,7 +140,8 @@ func main() {
 
 	r.Group(func(r chi.Router) {
 		r.Use(identity.WithUserID)
-		r.Use(identity.WithUserTimezone)
+		r.Use(identity.WithSessionID)
+		r.Use(identity.WithTimezone)
 
 		r.Post("/chat", chat.Handle(humanRunner))
 		r.Post("/chat/ava", chat.Handle(avaRunner))

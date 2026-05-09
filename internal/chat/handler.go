@@ -40,9 +40,14 @@ func Handle(runner *adkrunner.Runner) http.HandlerFunc {
 			api.WriteError(w, api.NewError(api.Unauthenticated, "Missing user identity").WithError(err))
 			return
 		}
+		sessionID, err := identity.GetSessionIDFromContext(r.Context())
+		if err != nil {
+			api.WriteError(w, api.NewError(api.Unauthenticated, "Missing session identity").WithError(err))
+			return
+		}
 
 		msg := genai.NewContentFromText(req.Message, "user")
-		events := runner.Run(r.Context(), userID, userID, msg, adkagent.RunConfig{})
+		events := runner.Run(r.Context(), userID, sessionID, msg, adkagent.RunConfig{})
 
 		var b strings.Builder
 		for event, err := range events {
