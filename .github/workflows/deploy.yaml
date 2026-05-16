@@ -58,5 +58,8 @@ jobs:
           env_vars: |
             APP_ENV=${{ env.APP_ENV }}
             ZEP_API_KEY=${{ secrets.ZEP_API_KEY }}
-            ZEE_API_URL=${{ vars.ZEE_API_URL }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            TUYA_ACCESS_ID=${{ secrets.TUYA_ACCESS_ID }}
+            TUYA_ACCESS_SECRET=${{ secrets.TUYA_ACCESS_SECRET }}
+            TUYA_BASE_URL=${{ vars.TUYA_BASE_URL }}
