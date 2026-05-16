@@ -26,8 +26,14 @@ func Load() (*Config, error) {
 			IdleTimeout:  120 * time.Second,
 		},
 		Zep:    &Zep{},
-		ZeeAPI: &ZeeAPI{},
 		Gemini: &Gemini{},
+		Tuya:   &Tuya{},
+		Database: &Database{
+			MaxConns:        20,
+			MinConns:        0,
+			MaxConnLifetime: 1 * time.Hour,
+			MaxConnIdleTime: 30 * time.Minute,
+		},
 	}
 
 	if err := cleanenv.ReadEnv(cfg.App); err != nil {
@@ -42,12 +48,16 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to load zep config: %w", err)
 	}
 
-	if err := cleanenv.ReadEnv(cfg.ZeeAPI); err != nil {
-		return nil, fmt.Errorf("failed to load zee config: %w", err)
-	}
-
 	if err := cleanenv.ReadEnv(cfg.Gemini); err != nil {
 		return nil, fmt.Errorf("failed to load gemini config: %w", err)
+	}
+
+	if err := cleanenv.ReadEnv(cfg.Tuya); err != nil {
+		return nil, fmt.Errorf("failed to load tuya config: %w", err)
+	}
+
+	if err := cleanenv.ReadEnv(cfg.Database); err != nil {
+		return nil, fmt.Errorf("failed to load database config: %w", err)
 	}
 
 	return cfg, nil

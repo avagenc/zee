@@ -6,9 +6,10 @@ type Config struct {
 	App    *App
 	Server *Server
 
-	Zep    *Zep
-	ZeeAPI *ZeeAPI
-	Gemini *Gemini
+	Zep      *Zep
+	Gemini   *Gemini
+	Tuya     *Tuya
+	Database *Database
 }
 
 type App struct {
@@ -29,10 +30,20 @@ type Zep struct {
 	URL    string `env:"ZEP_API_URL"`
 }
 
-type ZeeAPI struct {
-	URL string `env:"ZEE_API_URL" env-required:"true"`
-}
-
 type Gemini struct {
 	APIKey string `env:"GEMINI_API_KEY" env-required:"true"`
+}
+
+type Tuya struct {
+	AccessID     string `env:"TUYA_ACCESS_ID"     env-required:"true"`
+	AccessSecret string `env:"TUYA_ACCESS_SECRET" env-required:"true"`
+	BaseURL      string `env:"TUYA_BASE_URL"      env-required:"true"`
+}
+
+type Database struct {
+	URL             string        `env:"DATABASE_URL"                env-required:"true"`
+	MaxConns        int32         `env:"DATABASE_MAX_CONNS"`
+	MinConns        int32         `env:"DATABASE_MIN_CONNS"`
+	MaxConnLifetime time.Duration `env:"DATABASE_MAX_CONN_LIFETIME"`
+	MaxConnIdleTime time.Duration `env:"DATABASE_MAX_CONN_IDLE_TIME"`
 }
