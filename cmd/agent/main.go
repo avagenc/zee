@@ -7,18 +7,20 @@ import (
 
 	_ "time/tzdata"
 
+	"github.com/avagenc/zee-agent/internal/account"
 	"github.com/avagenc/zee-agent/internal/chat"
 	"github.com/avagenc/zee-agent/internal/config"
+	"github.com/avagenc/zee-agent/internal/device"
 	"github.com/avagenc/zee-agent/internal/system"
 	"github.com/avagenc/zee-agent/internal/tools"
+	"github.com/avagenc/zee-agent/internal/tuya"
 	"github.com/avagenc/zee-agent/internal/zee"
-	"github.com/avagenc/zee-agent/internal/zeeapi"
+	"github.com/avagenc/zee-agent/internal/zeedb"
 
 	"github.com/getzep/zep-go/v3/client"
 	"github.com/getzep/zep-go/v3/option"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"google.golang.org/api/idtoken"
 	"google.golang.org/genai"
 
 	"google.golang.org/adk/agent/llmagent"
@@ -39,23 +41,51 @@ func main() {
 
 	ctx := context.Background()
 
+	pgPool, err := zeedb.NewPool(
+		cfg.Database.URL,
+		cfg.Database.MaxConns,
+		cfg.Database.MinConns,
+		cfg.Database.MaxConnLifetime,
+		cfg.Database.MaxConnIdleTime,
+	)
+	if err != nil {
+		log.Fatalf("FATAL: Failed to connect to database: %v", err)
+	}
+	defer pgPool.Close()
+
+	if err := zeedb.ValidateSchema(ctx, pgPool); err != nil {
+		log.Fatalf("FATAL: Schema validation failed: %v", err)
+	}
+
+	tuyaClient, err := tuya.NewClient(
+		cfg.Tuya.AccessID,
+		cfg.Tuya.AccessSecret,
+		cfg.Tuya.BaseURL,
+	)
+	if err != nil {
+		log.Fatalf("FATAL: Failed to create Tuya client: %v", err)
+	}
+
+	accountRepo := account.NewRepository(pgPool)
+	accountSvc := account.NewService(accountRepo)
+
+	tuyaIoTClient := device.NewTuyaIoTClient(tuyaClient)
+	deviceSvc := device.NewService(accountSvc.GetTuyaUID, tuyaIoTClient)
+
+	t, err := tools.Load(tools.Services{
+		Account: accountSvc,
+		Device:  deviceSvc,
+		Sender:  deviceSvc,
+	})
+	if err != nil {
+		log.Fatalf("Failed to load tools: %v", err)
+	}
+
 	model, err := gemini.NewModel(ctx, "gemini-3-flash-preview", &genai.ClientConfig{
 		APIKey: cfg.Gemini.APIKey,
 	})
 	if err != nil {
 		log.Fatalf("Failed to assign Gemini model: %v", err)
-	}
-
-	oidcClient, err := idtoken.NewClient(ctx, cfg.ZeeAPI.URL)
-	if err != nil {
-		log.Fatalf("FATAL: Failed to create OIDC client for zee-api: %v", err)
-	}
-
-	zeeAPIClient := zeeapi.NewClient(cfg.ZeeAPI.URL, oidcClient)
-
-	t, err := tools.Load(zeeAPIClient)
-	if err != nil {
-		log.Fatalf("Failed to load tools: %v", err)
 	}
 
 	tuyaTools := []tool.Tool{
