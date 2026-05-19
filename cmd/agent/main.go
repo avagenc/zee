@@ -123,7 +123,7 @@ func main() {
 
 	humanSessSvc := adksession.Wrap(
 		zep.NewSessionService(zepClient, zee.Name,
-			zep.WithContextHistoryLength(conversationHistory),
+			zep.WithMessagesHistoryLength(conversationHistory),
 			zep.WithKnowledgeContext(nil),
 			zep.WithUserDisplayName("Human"),
 			zep.WithTimeHarnessFromContext(),
@@ -133,7 +133,7 @@ func main() {
 
 	avaSessSvc := adksession.Wrap(
 		zep.NewSessionService(zepClient, zee.Name,
-			zep.WithContextHistoryLength(conversationHistory),
+			zep.WithMessagesHistoryLength(conversationHistory),
 			zep.WithKnowledgeContext(nil),
 			zep.WithUserDisplayName("Ava"),
 			zep.WithTimeHarnessFromContext(),

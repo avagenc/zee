@@ -8,7 +8,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/joho/godotenv v1.5.1
-	go.naturallyfunny.dev/adk v1.4.0
+	go.naturallyfunny.dev/adk v1.5.0
 	go.naturallyfunny.dev/api v1.15.0
 	google.golang.org/adk v1.1.0
 	google.golang.org/genai v1.54.0
