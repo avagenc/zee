@@ -3,7 +3,7 @@ package system
 import (
 	"net/http"
 
-	"go.naturallyfunny.dev/api"
+	apihttp "go.naturallyfunny.dev/api/http"
 )
 
 type Handler struct {
@@ -33,5 +33,5 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 		Version:     h.version,
 	}
 
-	api.WriteSuccess(w, api.OK, "Service is healthy", data, nil)
+	apihttp.WriteJSON(w, http.StatusOK, data)
 }

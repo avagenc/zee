@@ -30,7 +30,9 @@ import (
 
 	adksession "go.naturallyfunny.dev/adk/session"
 	"go.naturallyfunny.dev/adk/zep"
-	"go.naturallyfunny.dev/api/identity"
+	apises  "go.naturallyfunny.dev/api/session"
+	apitime "go.naturallyfunny.dev/api/time"
+	apiuser "go.naturallyfunny.dev/api/user"
 )
 
 func main() {
@@ -125,7 +127,7 @@ func main() {
 			zep.WithKnowledgeContext(nil),
 			zep.WithUserDisplayName("Human"),
 		),
-		adksession.WithTimezoneFromContext(identity.TimezoneKey),
+		adksession.WithTimezoneFromContext(apitime.ContextKey),
 	)
 
 	avaSessSvc := adksession.Wrap(
@@ -134,7 +136,7 @@ func main() {
 			zep.WithKnowledgeContext(nil),
 			zep.WithUserDisplayName("Ava"),
 		),
-		adksession.WithTimezoneFromContext(identity.TimezoneKey),
+		adksession.WithTimezoneFromContext(apitime.ContextKey),
 	)
 
 	humanRunner, err := runner.New(runner.Config{
@@ -169,9 +171,9 @@ func main() {
 	r.Get("/", sys.Index)
 
 	r.Group(func(r chi.Router) {
-		r.Use(identity.WithUserID)
-		r.Use(identity.WithSessionID)
-		r.Use(identity.WithTimezone)
+		r.Use(apiuser.HTTPWithID)
+		r.Use(apises.HTTPWithID)
+		r.Use(apitime.HTTPWithZone)
 
 		r.Post("/chat", chat.Handle(humanRunner))
 		r.Post("/chat/ava", chat.Handle(avaRunner))

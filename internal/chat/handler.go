@@ -2,7 +2,6 @@ package chat
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strings"
 
@@ -10,8 +9,9 @@ import (
 	adkrunner "google.golang.org/adk/runner"
 	"google.golang.org/genai"
 
-	"go.naturallyfunny.dev/api"
-	"go.naturallyfunny.dev/api/identity"
+	apihttp "go.naturallyfunny.dev/api/http"
+	apises  "go.naturallyfunny.dev/api/session"
+	apiuser "go.naturallyfunny.dev/api/user"
 )
 
 type Request struct {
@@ -26,23 +26,25 @@ func Handle(runner *adkrunner.Runner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req Request
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			api.WriteError(w, api.NewError(api.InvalidArgument, "Invalid JSON body").WithError(err))
+			apihttp.WriteProblem(w, http.StatusBadRequest, map[string]any{"detail": "Invalid JSON body"})
 			return
 		}
 		if req.Message == "" {
-			api.WriteError(w, api.NewError(api.InvalidArgument, "Field 'message' is required").
-				WithDetails([]api.ErrorDetail{{Field: "message", Message: "must not be empty"}}))
+			apihttp.WriteProblem(w, http.StatusBadRequest, map[string]any{
+				"detail": "Field 'message' is required",
+				"errors": []map[string]string{{"field": "message", "message": "must not be empty"}},
+			})
 			return
 		}
 
-		userID, err := identity.GetUserIDFromContext(r.Context())
+		userID, err := apiuser.IDFromContext(r.Context())
 		if err != nil {
-			api.WriteError(w, api.NewError(api.Unauthenticated, "Missing user identity").WithError(err))
+			apihttp.WriteProblem(w, http.StatusUnauthorized, map[string]any{"detail": err.Error()})
 			return
 		}
-		sessionID, err := identity.GetSessionIDFromContext(r.Context())
+		sessionID, err := apises.IDFromContext(r.Context())
 		if err != nil {
-			api.WriteError(w, api.NewError(api.Unauthenticated, "Missing session identity").WithError(err))
+			apihttp.WriteProblem(w, http.StatusUnauthorized, map[string]any{"detail": err.Error()})
 			return
 		}
 
@@ -52,12 +54,7 @@ func Handle(runner *adkrunner.Runner) http.HandlerFunc {
 		var b strings.Builder
 		for event, err := range events {
 			if err != nil {
-				var apiErr *api.Error
-				if errors.As(err, &apiErr) {
-					api.WriteError(w, apiErr)
-				} else {
-					api.WriteError(w, api.NewError(api.Internal, "Failed to process message").WithError(err))
-				}
+				apihttp.WriteProblem(w, http.StatusInternalServerError, map[string]any{"detail": "Failed to process message"})
 				return
 			}
 			if event.Content == nil {
@@ -70,6 +67,6 @@ func Handle(runner *adkrunner.Runner) http.HandlerFunc {
 			}
 		}
 
-		api.WriteSuccess(w, api.OK, "Message processed", Response{Response: b.String()}, nil)
+		apihttp.WriteJSON(w, http.StatusOK, Response{Response: b.String()})
 	}
 }

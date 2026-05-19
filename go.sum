@@ -67,8 +67,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 go.naturallyfunny.dev/adk v1.3.1 h1:XNbjCoVPkGvTW9kL3s09XhIRentFS6rvdFXpatg8z+k=
 go.naturallyfunny.dev/adk v1.3.1/go.mod h1:VugI8NXuugXGRYFPxvC16upBx328zCkHV+BvULbV1BA=
-go.naturallyfunny.dev/api v1.8.0 h1:PJIt7sB/XKL6RE5MfUBi+RHV2pFLzXftDtBf5Z0Kbzo=
-go.naturallyfunny.dev/api v1.8.0/go.mod h1:l8a+fA+ze+Y7m+QE0w6e8wyh/N3pvvE90R1WEqDMGYM=
+go.naturallyfunny.dev/api v1.15.0 h1:gEnuFAAMpbWK2T+YDdqTdKe6dHmXEAUP8QCIZm+WAuQ=
+go.naturallyfunny.dev/api v1.15.0/go.mod h1:l8a+fA+ze+Y7m+QE0w6e8wyh/N3pvvE90R1WEqDMGYM=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.67.0 h1:OyrsyzuttWTSur2qN/Lm0m2a8yqyIjUVBZcxFPuXq2o=
