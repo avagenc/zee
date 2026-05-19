@@ -126,6 +126,7 @@ func main() {
 			zep.WithContextHistoryLength(conversationHistory),
 			zep.WithKnowledgeContext(nil),
 			zep.WithUserDisplayName("Human"),
+			zep.WithTimeHarnessFromContext(),
 		),
 		adksession.WithTimezoneFromContext(apitime.ContextKey),
 	)
@@ -135,6 +136,7 @@ func main() {
 			zep.WithContextHistoryLength(conversationHistory),
 			zep.WithKnowledgeContext(nil),
 			zep.WithUserDisplayName("Ava"),
+			zep.WithTimeHarnessFromContext(),
 		),
 		adksession.WithTimezoneFromContext(apitime.ContextKey),
 	)
