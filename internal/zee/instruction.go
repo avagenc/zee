@@ -33,5 +33,5 @@ func SystemInstruction(opts ...Option) string {
 		opt(cfg)
 	}
 
-	return "<system_instruction>\n" + baseInstruction + "\n" + cfg.interaction + "\n</system_instruction>"
+	return "[SYSTEM_INSTRUCTION]" + baseInstruction + "\n" + cfg.interaction + "\n[/SYSTEM_INSTRUCTION]"
 }
