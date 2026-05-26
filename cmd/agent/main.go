@@ -120,8 +120,7 @@ func main() {
 	accountRepo := account.NewRepository(pgPool)
 	accountSvc := account.NewService(accountRepo)
 
-	tuyaIoTClient := device.NewTuyaIoTClient(tuyaClient)
-	deviceSvc := device.NewService(accountSvc.GetTuyaUID, tuyaIoTClient)
+	deviceSvc := device.NewService(accountSvc.GetTuyaUID, tuyaClient)
 
 	getAccount, err := functiontool.New(
 		functiontool.Config{

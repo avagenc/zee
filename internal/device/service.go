@@ -9,20 +9,38 @@ import (
 	"sync"
 )
 
+type DataPoint struct {
+	Code  string `json:"code"`
+	Value any    `json:"value"`
+}
+
+type Channel struct {
+	Identifier string `json:"identifier"`
+	Name       string `json:"name"`
+}
+
+type Device struct {
+	ID              string      `json:"id"`
+	Category        string      `json:"category"`
+	Name            string      `json:"name"`
+	Status          []DataPoint `json:"status"`
+	CodeNameMapping []Channel   `json:"code_name_mapping"`
+}
+
 type TuyaUIDGetter func(ctx context.Context, userID string) (string, error)
 
-type TuyaIoTClient interface {
+type TuyaClient interface {
+	List(tuyaUID string) (json.RawMessage, error)
 	SendCommands(deviceID string, commands any) (json.RawMessage, error)
 	GetMultiChannelName(deviceID string) (json.RawMessage, error)
-	List(tuyaUID string) ([]Device, error)
 }
 
 type service struct {
 	getTuyaID TuyaUIDGetter
-	tuya      TuyaIoTClient
+	tuya      TuyaClient
 }
 
-func NewService(getTuyaID TuyaUIDGetter, tuya TuyaIoTClient) *service {
+func NewService(getTuyaID TuyaUIDGetter, tuya TuyaClient) *service {
 	return &service{getTuyaID: getTuyaID, tuya: tuya}
 }
 
@@ -32,9 +50,14 @@ func (s *service) List(ctx context.Context, userID string) ([]Device, error) {
 		return nil, err
 	}
 
-	devices, err := s.tuya.List(tuyaUID)
+	raw, err := s.tuya.List(tuyaUID)
 	if err != nil {
 		return nil, err
+	}
+
+	var devices []Device
+	if err := json.Unmarshal(raw, &devices); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal device list: %w", err)
 	}
 
 	if len(devices) == 0 {
@@ -47,6 +70,8 @@ func (s *service) List(ctx context.Context, userID string) ([]Device, error) {
 
 	return devices, nil
 }
+
+var ErrDeviceNotOwned = fmt.Errorf("device does not belong to user")
 
 func (s *service) SendCommands(ctx context.Context, userID string, deviceID string, commands []DataPoint) (json.RawMessage, error) {
 	tuyaUID, err := s.getTuyaID(ctx, userID)
@@ -71,9 +96,13 @@ func (s *service) SendCommands(ctx context.Context, userID string, deviceID stri
 }
 
 func (s *service) getUserDeviceIDs(tuyaUID string) ([]string, error) {
-	devices, err := s.tuya.List(tuyaUID)
+	raw, err := s.tuya.List(tuyaUID)
 	if err != nil {
 		return nil, err
+	}
+	var devices []Device
+	if err := json.Unmarshal(raw, &devices); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal device list: %w", err)
 	}
 	ids := make([]string, len(devices))
 	for i, d := range devices {
@@ -109,15 +138,15 @@ func (s *service) enrichWithChannelNames(devices []*Device) error {
 		go func(device *Device) {
 			defer wg.Done()
 
-			result, err := s.tuya.GetMultiChannelName(device.ID)
+			raw, err := s.tuya.GetMultiChannelName(device.ID)
 			if err != nil {
 				errs <- fmt.Errorf("failed to get channel name for device %s: %w", device.ID, err)
 				return
 			}
 
 			var channels []Channel
-			if len(result) > 0 {
-				if err := json.Unmarshal(result, &channels); err != nil {
+			if len(raw) > 0 {
+				if err := json.Unmarshal(raw, &channels); err != nil {
 					errs <- fmt.Errorf("failed to decode channels for device %s: %w", device.ID, err)
 					return
 				}
