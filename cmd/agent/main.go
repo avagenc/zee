@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log"
 	"net/http"
@@ -38,6 +39,14 @@ import (
 	apiuser "go.naturallyfunny.dev/api/user"
 )
 
+//go:embed base-instruction.txt
+var baseInstruction string
+
+//go:embed for-human-instruction.txt
+var humanInstruction string
+
+//go:embed for-ava-instruction.txt
+var avaInstruction string
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -183,7 +192,7 @@ func main() {
 	if geminiAPIKey == "" {
 		log.Fatal("FATAL: GEMINI_API_KEY is required")
 	}
-	model, err := gemini.NewModel(ctx, "gemini-3-flash-preview", &genai.ClientConfig{
+	model, err := gemini.NewModel(ctx, "gemini-3.1-flash", &genai.ClientConfig{
 		APIKey: geminiAPIKey,
 	})
 	if err != nil {
@@ -199,7 +208,7 @@ func main() {
 		Model:       model,
 		Tools:       tuyaTools,
 		Description: "Avagenc Tuya Smart Agent, Human triggered processing",
-		Instruction: systemInstruction(false),
+		Instruction: "[SYSTEM_INSTRUCTION]" + baseInstruction + "\n" + humanInstruction + "\n[/SYSTEM_INSTRUCTION]",
 	})
 	if err != nil {
 		log.Fatalf("Failed to create user-channel agent: %v", err)
@@ -210,7 +219,7 @@ func main() {
 		Model:       model,
 		Tools:       tuyaTools,
 		Description: "Avagenc Tuya Smart Agent, Ava triggered processing",
-		Instruction: systemInstruction(true),
+		Instruction: "[SYSTEM_INSTRUCTION]" + baseInstruction + "\n" + avaInstruction + "\n[/SYSTEM_INSTRUCTION]",
 	})
 	if err != nil {
 		log.Fatalf("Failed to create ava-channel agent: %v", err)
