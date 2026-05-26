@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,9 +15,7 @@ import (
 	"github.com/avagenc/zee-agent/internal/chat"
 	"github.com/avagenc/zee-agent/internal/device"
 	"github.com/avagenc/zee-agent/internal/system"
-	"github.com/avagenc/zee-agent/internal/tools"
 	"github.com/avagenc/zee-agent/internal/tuya"
-	"github.com/avagenc/zee-agent/internal/zee"
 
 	"github.com/getzep/zep-go/v3/client"
 	"github.com/getzep/zep-go/v3/option"
@@ -30,6 +29,7 @@ import (
 	"google.golang.org/adk/model/gemini"
 	"google.golang.org/adk/runner"
 	"google.golang.org/adk/tool"
+	"google.golang.org/adk/tool/functiontool"
 
 	adksession "go.naturallyfunny.dev/adk/session"
 	"go.naturallyfunny.dev/adk/zep"
@@ -37,6 +37,7 @@ import (
 	apitime "go.naturallyfunny.dev/api/time"
 	apiuser "go.naturallyfunny.dev/api/user"
 )
+
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -122,13 +123,61 @@ func main() {
 	tuyaIoTClient := device.NewTuyaIoTClient(tuyaClient)
 	deviceSvc := device.NewService(accountSvc.GetTuyaUID, tuyaIoTClient)
 
-	t, err := tools.Load(tools.Services{
-		Account: accountSvc,
-		Device:  deviceSvc,
-		Sender:  deviceSvc,
-	})
+	getAccount, err := functiontool.New(
+		functiontool.Config{
+			Name:        "get_account",
+			Description: "Use this tool to retrieve the Tuya account linked to the current authenticated avagenc user.",
+		},
+		func(ctx tool.Context, args struct{}) (any, error) {
+			result, err := accountSvc.Get(ctx, ctx.UserID())
+			if err != nil {
+				fmt.Printf("[tool:get_account] error: %v\n", err)
+				return nil, err
+			}
+			return result, nil
+		},
+	)
 	if err != nil {
-		log.Fatalf("Failed to load tools: %v", err)
+		log.Fatalf("Failed to create get_account tool: %v", err)
+	}
+
+	listDevices, err := functiontool.New(
+		functiontool.Config{
+			Name:        "list_devices",
+			Description: "Use this tool to retrieve all Tuya IoT devices linked to the linked user's Tuya account.",
+		},
+		func(ctx tool.Context, args struct{}) (map[string]any, error) {
+			result, err := deviceSvc.List(ctx, ctx.UserID())
+			if err != nil {
+				fmt.Printf("[tool:list_devices] error: %v\n", err)
+				return nil, err
+			}
+			return map[string]any{"devices": result}, nil
+		},
+	)
+	if err != nil {
+		log.Fatalf("Failed to create list_devices tool: %v", err)
+	}
+
+	sendCommandsToADevice, err := functiontool.New(
+		functiontool.Config{
+			Name:        "send_commands_to_a_device",
+			Description: `Use this tool to send commands to a device by the device "id". You can get "id" of devices from list_devices tool. Always pay attention to the "id" of the device, make sure you input the accurate device "id" or else it would be fatal. in string form but array of maps`,
+		},
+		func(ctx tool.Context, args struct {
+			DeviceID string             `json:"device_id"`
+			Commands []device.DataPoint `json:"commands"`
+		}) (any, error) {
+			result, err := deviceSvc.SendCommands(ctx, ctx.UserID(), args.DeviceID, args.Commands)
+			if err != nil {
+				fmt.Printf("[tool:send_commands_to_a_device] error: %v\n", err)
+				return nil, err
+			}
+			return result, nil
+		},
+	)
+	if err != nil {
+		log.Fatalf("Failed to create send_commands_to_a_device tool: %v", err)
 	}
 
 	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
@@ -142,29 +191,27 @@ func main() {
 		log.Fatalf("Failed to assign Gemini model: %v", err)
 	}
 
-	tuyaTools := []tool.Tool{
-		t.GetAccount,
-		t.ListDevices,
-		t.SendCommandsToADevice,
-	}
+	tuyaTools := []tool.Tool{getAccount, listDevices, sendCommandsToADevice}
 
-	zeeForUser, err := llmagent.New(llmagent.Config{
-		Name:        zee.Name,
+	const name = "Zee"
+
+	agentForHuman, err := llmagent.New(llmagent.Config{
+		Name:        name,
 		Model:       model,
 		Tools:       tuyaTools,
 		Description: "Avagenc Tuya Smart Agent, Human triggered processing",
-		Instruction: zee.SystemInstruction(),
+		Instruction: systemInstruction(false),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create user-channel agent: %v", err)
 	}
 
-	zeeForAva, err := llmagent.New(llmagent.Config{
-		Name:        zee.Name,
+	agentForAva, err := llmagent.New(llmagent.Config{
+		Name:        name,
 		Model:       model,
 		Tools:       tuyaTools,
 		Description: "Avagenc Tuya Smart Agent, Ava triggered processing",
-		Instruction: zee.SystemInstruction(zee.ForAva()),
+		Instruction: systemInstruction(true),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create ava-channel agent: %v", err)
@@ -178,7 +225,7 @@ func main() {
 	zepClient := client.NewClient(option.WithAPIKey(zepAPIKey))
 
 	humanSessSvc := adksession.Wrap(
-		zep.NewSessionService(zepClient, zee.Name,
+		zep.NewSessionService(zepClient, name,
 			zep.WithMessagesHistoryLength(conversationHistory),
 			zep.WithKnowledgeContext(nil),
 			zep.WithUserDisplayName("Human (Avagenc User)"),
@@ -188,7 +235,7 @@ func main() {
 	)
 
 	avaSessSvc := adksession.Wrap(
-		zep.NewSessionService(zepClient, zee.Name,
+		zep.NewSessionService(zepClient, name,
 			zep.WithMessagesHistoryLength(conversationHistory),
 			zep.WithKnowledgeContext(nil),
 			zep.WithUserDisplayName("Ava (Avagenc Agent)"),
@@ -199,7 +246,7 @@ func main() {
 
 	humanRunner, err := runner.New(runner.Config{
 		AppName:           "zee-agent",
-		Agent:             zeeForUser,
+		Agent:             agentForHuman,
 		SessionService:    humanSessSvc,
 		AutoCreateSession: true,
 	})
@@ -209,7 +256,7 @@ func main() {
 
 	avaRunner, err := runner.New(runner.Config{
 		AppName:           "zee-agent",
-		Agent:             zeeForAva,
+		Agent:             agentForAva,
 		SessionService:    avaSessSvc,
 		AutoCreateSession: true,
 	})
@@ -248,7 +295,7 @@ func main() {
 	const readTimeout = 16 * time.Second
 	const writeTimeout = 120 * time.Second
 	const idleTimeout = 120 * time.Second
-	
+
 	s := &http.Server{
 		Addr:         ":" + port,
 		Handler:      r,
