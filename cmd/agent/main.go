@@ -50,9 +50,37 @@ func main() {
 		log.Fatal("FATAL: DATABASE_URL is required")
 	}
 	maxConns := int32(20)
+	if v := os.Getenv("DATABASE_MAX_CONNS"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			log.Fatalf("FATAL: invalid DATABASE_MAX_CONNS: %v", err)
+		}
+		maxConns = int32(n)
+	}
 	minConns := int32(0)
+	if v := os.Getenv("DATABASE_MIN_CONNS"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			log.Fatalf("FATAL: invalid DATABASE_MIN_CONNS: %v", err)
+		}
+		minConns = int32(n)
+	}
 	maxConnLifetime := time.Hour
+	if v := os.Getenv("DATABASE_MAX_CONN_LIFETIME"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			log.Fatalf("FATAL: invalid DATABASE_MAX_CONN_LIFETIME: %v", err)
+		}
+		maxConnLifetime = d
+	}
 	maxConnIdleTime := 30 * time.Minute
+	if v := os.Getenv("DATABASE_MAX_CONN_IDLE_TIME"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			log.Fatalf("FATAL: invalid DATABASE_MAX_CONN_IDLE_TIME: %v", err)
+		}
+		maxConnIdleTime = d
+	}
 	pgPool, err := zeedb.NewPool(databaseURL, maxConns, minConns, maxConnLifetime, maxConnIdleTime)
 	if err != nil {
 		log.Fatalf("FATAL: Failed to connect to database: %v", err)
@@ -116,7 +144,7 @@ func main() {
 		Name:        zee.Name,
 		Model:       model,
 		Tools:       tuyaTools,
-		Description: "Avagenc Tuya Smart Agent, human triggered processing",
+		Description: "Avagenc Tuya Smart Agent, Human triggered processing",
 		Instruction: zee.SystemInstruction(),
 	})
 	if err != nil {
@@ -127,7 +155,7 @@ func main() {
 		Name:        zee.Name,
 		Model:       model,
 		Tools:       tuyaTools,
-		Description: "Avagenc Tuya Smart Agent ava triggered processing",
+		Description: "Avagenc Tuya Smart Agent, Ava triggered processing",
 		Instruction: zee.SystemInstruction(zee.ForAva()),
 	})
 	if err != nil {
@@ -209,30 +237,10 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	readTimeout := 16 * time.Second
-	if v := os.Getenv("SERVER_READ_TIMEOUT"); v != "" {
-		d, err := time.ParseDuration(v)
-		if err != nil {
-			log.Fatalf("FATAL: invalid SERVER_READ_TIMEOUT: %v", err)
-		}
-		readTimeout = d
-	}
-	writeTimeout := 120 * time.Second
-	if v := os.Getenv("SERVER_WRITE_TIMEOUT"); v != "" {
-		d, err := time.ParseDuration(v)
-		if err != nil {
-			log.Fatalf("FATAL: invalid SERVER_WRITE_TIMEOUT: %v", err)
-		}
-		writeTimeout = d
-	}
-	idleTimeout := 120 * time.Second
-	if v := os.Getenv("SERVER_IDLE_TIMEOUT"); v != "" {
-		d, err := time.ParseDuration(v)
-		if err != nil {
-			log.Fatalf("FATAL: invalid SERVER_IDLE_TIMEOUT: %v", err)
-		}
-		idleTimeout = d
-	}
+	const readTimeout = 16 * time.Second
+	const writeTimeout = 120 * time.Second
+	const idleTimeout = 120 * time.Second
+	
 	s := &http.Server{
 		Addr:         ":" + port,
 		Handler:      r,
