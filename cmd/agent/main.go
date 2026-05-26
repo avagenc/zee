@@ -4,12 +4,14 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
+	"time"
 
 	_ "time/tzdata"
 
 	"github.com/avagenc/zee-agent/internal/account"
 	"github.com/avagenc/zee-agent/internal/chat"
-	"github.com/avagenc/zee-agent/internal/config"
 	"github.com/avagenc/zee-agent/internal/device"
 	"github.com/avagenc/zee-agent/internal/system"
 	"github.com/avagenc/zee-agent/internal/tools"
@@ -21,6 +23,7 @@ import (
 	"github.com/getzep/zep-go/v3/option"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 
 	"google.golang.org/adk/agent/llmagent"
@@ -30,26 +33,27 @@ import (
 
 	adksession "go.naturallyfunny.dev/adk/session"
 	"go.naturallyfunny.dev/adk/zep"
-	apises  "go.naturallyfunny.dev/api/session"
+	apises "go.naturallyfunny.dev/api/session"
 	apitime "go.naturallyfunny.dev/api/time"
 	apiuser "go.naturallyfunny.dev/api/user"
 )
 
 func main() {
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("FATAL: %v", err)
+	if err := godotenv.Load(); err != nil {
+		log.Println("Info: .env file not found, using system environment variables")
 	}
 
 	ctx := context.Background()
 
-	pgPool, err := zeedb.NewPool(
-		cfg.Database.URL,
-		cfg.Database.MaxConns,
-		cfg.Database.MinConns,
-		cfg.Database.MaxConnLifetime,
-		cfg.Database.MaxConnIdleTime,
-	)
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		log.Fatal("FATAL: DATABASE_URL is required")
+	}
+	maxConns := int32(20)
+	minConns := int32(0)
+	maxConnLifetime := time.Hour
+	maxConnIdleTime := 30 * time.Minute
+	pgPool, err := zeedb.NewPool(databaseURL, maxConns, minConns, maxConnLifetime, maxConnIdleTime)
 	if err != nil {
 		log.Fatalf("FATAL: Failed to connect to database: %v", err)
 	}
@@ -59,11 +63,19 @@ func main() {
 		log.Fatalf("FATAL: Schema validation failed: %v", err)
 	}
 
-	tuyaClient, err := tuya.NewClient(
-		cfg.Tuya.AccessID,
-		cfg.Tuya.AccessSecret,
-		cfg.Tuya.BaseURL,
-	)
+	tuyaAccessID := os.Getenv("TUYA_ACCESS_ID")
+	if tuyaAccessID == "" {
+		log.Fatal("FATAL: TUYA_ACCESS_ID is required")
+	}
+	tuyaAccessSecret := os.Getenv("TUYA_ACCESS_SECRET")
+	if tuyaAccessSecret == "" {
+		log.Fatal("FATAL: TUYA_ACCESS_SECRET is required")
+	}
+	tuyaBaseURL := os.Getenv("TUYA_BASE_URL")
+	if tuyaBaseURL == "" {
+		log.Fatal("FATAL: TUYA_BASE_URL is required")
+	}
+	tuyaClient, err := tuya.NewClient(tuyaAccessID, tuyaAccessSecret, tuyaBaseURL)
 	if err != nil {
 		log.Fatalf("FATAL: Failed to create Tuya client: %v", err)
 	}
@@ -83,8 +95,12 @@ func main() {
 		log.Fatalf("Failed to load tools: %v", err)
 	}
 
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+	if geminiAPIKey == "" {
+		log.Fatal("FATAL: GEMINI_API_KEY is required")
+	}
 	model, err := gemini.NewModel(ctx, "gemini-3-flash-preview", &genai.ClientConfig{
-		APIKey: cfg.Gemini.APIKey,
+		APIKey: geminiAPIKey,
 	})
 	if err != nil {
 		log.Fatalf("Failed to assign Gemini model: %v", err)
@@ -100,7 +116,7 @@ func main() {
 		Name:        zee.Name,
 		Model:       model,
 		Tools:       tuyaTools,
-		Description: "Tuya Smart Home Agent — direct user channel",
+		Description: "Avagenc Tuya Smart Agent, human triggered processing",
 		Instruction: zee.SystemInstruction(),
 	})
 	if err != nil {
@@ -111,21 +127,25 @@ func main() {
 		Name:        zee.Name,
 		Model:       model,
 		Tools:       tuyaTools,
-		Description: "Tuya Smart Home Agent — Ava orchestrator channel",
+		Description: "Avagenc Tuya Smart Agent ava triggered processing",
 		Instruction: zee.SystemInstruction(zee.ForAva()),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create ava-channel agent: %v", err)
 	}
 
-	conversationHistory := 6
-	zepClient := client.NewClient(option.WithAPIKey(cfg.Zep.APIKey))
+	zepAPIKey := os.Getenv("ZEP_API_KEY")
+	if zepAPIKey == "" {
+		log.Fatal("FATAL: ZEP_API_KEY is required")
+	}
+	conversationHistory := 8
+	zepClient := client.NewClient(option.WithAPIKey(zepAPIKey))
 
 	humanSessSvc := adksession.Wrap(
 		zep.NewSessionService(zepClient, zee.Name,
 			zep.WithMessagesHistoryLength(conversationHistory),
 			zep.WithKnowledgeContext(nil),
-			zep.WithUserDisplayName("Human"),
+			zep.WithUserDisplayName("Human (Avagenc User)"),
 			zep.WithTimeHarnessFromContext(),
 		),
 		adksession.WithTimezoneFromContext(apitime.ContextKey),
@@ -135,14 +155,14 @@ func main() {
 		zep.NewSessionService(zepClient, zee.Name,
 			zep.WithMessagesHistoryLength(conversationHistory),
 			zep.WithKnowledgeContext(nil),
-			zep.WithUserDisplayName("Ava"),
+			zep.WithUserDisplayName("Ava (Avagenc Agent)"),
 			zep.WithTimeHarnessFromContext(),
 		),
 		adksession.WithTimezoneFromContext(apitime.ContextKey),
 	)
 
 	humanRunner, err := runner.New(runner.Config{
-		AppName:           cfg.App.Name,
+		AppName:           "zee-agent",
 		Agent:             zeeForUser,
 		SessionService:    humanSessSvc,
 		AutoCreateSession: true,
@@ -152,7 +172,7 @@ func main() {
 	}
 
 	avaRunner, err := runner.New(runner.Config{
-		AppName:           cfg.App.Name,
+		AppName:           "zee-agent",
 		Agent:             zeeForAva,
 		SessionService:    avaSessSvc,
 		AutoCreateSession: true,
@@ -161,7 +181,11 @@ func main() {
 		log.Fatalf("Failed to create ava-channel runner: %v", err)
 	}
 
-	sys := system.NewHandler(cfg.App.Name, cfg.App.Version, cfg.App.Env)
+	appEnv := os.Getenv("APP_ENV")
+	if appEnv == "" {
+		log.Fatal("FATAL: APP_ENV is required")
+	}
+	sys := system.NewHandler("zee-agent", "v0.2.0", appEnv)
 
 	r := chi.NewRouter()
 
@@ -178,19 +202,47 @@ func main() {
 		r.Use(apitime.HTTPWithZone)
 
 		r.Post("/chat", chat.Handle(humanRunner))
-		r.Post("/chat/ava", chat.Handle(avaRunner))
+		r.Post("/chat/agent", chat.Handle(avaRunner))
 	})
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	readTimeout := 16 * time.Second
+	if v := os.Getenv("SERVER_READ_TIMEOUT"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			log.Fatalf("FATAL: invalid SERVER_READ_TIMEOUT: %v", err)
+		}
+		readTimeout = d
+	}
+	writeTimeout := 120 * time.Second
+	if v := os.Getenv("SERVER_WRITE_TIMEOUT"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			log.Fatalf("FATAL: invalid SERVER_WRITE_TIMEOUT: %v", err)
+		}
+		writeTimeout = d
+	}
+	idleTimeout := 120 * time.Second
+	if v := os.Getenv("SERVER_IDLE_TIMEOUT"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			log.Fatalf("FATAL: invalid SERVER_IDLE_TIMEOUT: %v", err)
+		}
+		idleTimeout = d
+	}
 	s := &http.Server{
-		Addr:         ":" + cfg.Server.Port,
+		Addr:         ":" + port,
 		Handler:      r,
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
-		IdleTimeout:  cfg.Server.IdleTimeout,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 
 	log.Printf("In the name of Allah, The Most Compassionate, The Most Merciful")
-	log.Printf("Starting %s (%s) on port %s\n", cfg.App.Name, cfg.App.Version, cfg.Server.Port)
+	log.Printf("Starting zee-agent (v0.2.0) on port %s\n", port)
 
 	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("FATAL: Failed to start API: %v", err)
