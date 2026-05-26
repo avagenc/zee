@@ -17,12 +17,12 @@ import (
 	"github.com/avagenc/zee-agent/internal/tools"
 	"github.com/avagenc/zee-agent/internal/tuya"
 	"github.com/avagenc/zee-agent/internal/zee"
-	"github.com/avagenc/zee-agent/internal/zeedb"
 
 	"github.com/getzep/zep-go/v3/client"
 	"github.com/getzep/zep-go/v3/option"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 
@@ -49,46 +49,54 @@ func main() {
 	if databaseURL == "" {
 		log.Fatal("FATAL: DATABASE_URL is required")
 	}
-	maxConns := int32(20)
+	dbCfg, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		log.Fatalf("FATAL: Failed to parse database URL: %v", err)
+	}
+	dbCfg.MaxConns = 20
 	if v := os.Getenv("DATABASE_MAX_CONNS"); v != "" {
 		n, err := strconv.ParseInt(v, 10, 32)
 		if err != nil {
 			log.Fatalf("FATAL: invalid DATABASE_MAX_CONNS: %v", err)
 		}
-		maxConns = int32(n)
+		dbCfg.MaxConns = int32(n)
 	}
-	minConns := int32(0)
+	dbCfg.MinConns = 0
 	if v := os.Getenv("DATABASE_MIN_CONNS"); v != "" {
 		n, err := strconv.ParseInt(v, 10, 32)
 		if err != nil {
 			log.Fatalf("FATAL: invalid DATABASE_MIN_CONNS: %v", err)
 		}
-		minConns = int32(n)
+		dbCfg.MinConns = int32(n)
 	}
-	maxConnLifetime := time.Hour
+	dbCfg.MaxConnLifetime = time.Hour
 	if v := os.Getenv("DATABASE_MAX_CONN_LIFETIME"); v != "" {
 		d, err := time.ParseDuration(v)
 		if err != nil {
 			log.Fatalf("FATAL: invalid DATABASE_MAX_CONN_LIFETIME: %v", err)
 		}
-		maxConnLifetime = d
+		dbCfg.MaxConnLifetime = d
 	}
-	maxConnIdleTime := 30 * time.Minute
+	dbCfg.MaxConnIdleTime = 30 * time.Minute
 	if v := os.Getenv("DATABASE_MAX_CONN_IDLE_TIME"); v != "" {
 		d, err := time.ParseDuration(v)
 		if err != nil {
 			log.Fatalf("FATAL: invalid DATABASE_MAX_CONN_IDLE_TIME: %v", err)
 		}
-		maxConnIdleTime = d
+		dbCfg.MaxConnIdleTime = d
 	}
-	pgPool, err := zeedb.NewPool(databaseURL, maxConns, minConns, maxConnLifetime, maxConnIdleTime)
+
+	dbCtx, dbCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer dbCancel()
+
+	pgPool, err := pgxpool.NewWithConfig(dbCtx, dbCfg)
 	if err != nil {
-		log.Fatalf("FATAL: Failed to connect to database: %v", err)
+		log.Fatalf("FATAL: Unable to create connection pool: %v", err)
 	}
 	defer pgPool.Close()
 
-	if err := zeedb.ValidateSchema(ctx, pgPool); err != nil {
-		log.Fatalf("FATAL: Schema validation failed: %v", err)
+	if err := pgPool.Ping(dbCtx); err != nil {
+		log.Fatalf("FATAL: Unable to connect to database: %v", err)
 	}
 
 	tuyaAccessID := os.Getenv("TUYA_ACCESS_ID")
