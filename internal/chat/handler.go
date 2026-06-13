@@ -2,6 +2,8 @@ package chat
 
 import (
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -9,6 +11,7 @@ import (
 	adkrunner "google.golang.org/adk/runner"
 	"google.golang.org/genai"
 
+	"go.naturallyfunny.dev/adk/zep"
 	apihttp "go.naturallyfunny.dev/api/http"
 	apises  "go.naturallyfunny.dev/api/session"
 	apiuser "go.naturallyfunny.dev/api/user"
@@ -22,7 +25,10 @@ type Response struct {
 	Response string `json:"response"`
 }
 
-func Handle(runner *adkrunner.Runner) http.HandlerFunc {
+// Handle returns the chat HTTP handler. mentionPrefix, when non-empty, is
+// prepended to the incoming message before persistence and runner invocation so
+// the channel that requires a delegation trace (the agent channel) carries it.
+func Handle(runner *adkrunner.Runner, mentionPrefix string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req Request
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -48,12 +54,22 @@ func Handle(runner *adkrunner.Runner) http.HandlerFunc {
 			return
 		}
 
-		msg := genai.NewContentFromText(req.Message, "user")
+		text := req.Message
+		if mentionPrefix != "" && !strings.HasPrefix(text, mentionPrefix) {
+			text = mentionPrefix + text
+		}
+
+		msg := genai.NewContentFromText(text, "user")
 		events := runner.Run(r.Context(), userID, sessionID, msg, adkagent.RunConfig{})
 
 		var b strings.Builder
 		for event, err := range events {
 			if err != nil {
+				if errors.Is(err, zep.ErrSessionOwnerMismatch) {
+					apihttp.WriteProblem(w, http.StatusForbidden, map[string]any{"detail": "Session does not belong to user"})
+					return
+				}
+				log.Printf("chat: run error: %v", err)
 				apihttp.WriteProblem(w, http.StatusInternalServerError, map[string]any{"detail": "Failed to process message"})
 				return
 			}

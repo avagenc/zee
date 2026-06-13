@@ -32,7 +32,6 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
-	adksession "go.naturallyfunny.dev/adk/session"
 	"go.naturallyfunny.dev/adk/zep"
 	apises "go.naturallyfunny.dev/api/session"
 	apitime "go.naturallyfunny.dev/api/time"
@@ -232,24 +231,18 @@ func main() {
 	conversationHistory := 8
 	zepClient := client.NewClient(option.WithAPIKey(zepAPIKey))
 
-	humanSessSvc := adksession.Wrap(
-		zep.NewSessionService(zepClient, name,
-			zep.WithMessagesHistoryLength(conversationHistory),
-			zep.WithKnowledgeContext(nil),
-			zep.WithUserDisplayName("Human (Avagenc User)"),
-			zep.WithTimeHarnessFromContext(),
-		),
-		adksession.WithTimezoneFromContext(apitime.ContextKey),
+	humanSessSvc := zep.NewSessionService(zepClient, name,
+		zep.WithMessagesHistoryLength(conversationHistory),
+		zep.WithKnowledgeContext(nil),
+		zep.WithUserDisplayName("Human (Avagenc User)"),
+		zep.WithTimeHarnessFromContext(apitime.ContextKey),
 	)
 
-	avaSessSvc := adksession.Wrap(
-		zep.NewSessionService(zepClient, name,
-			zep.WithMessagesHistoryLength(conversationHistory),
-			zep.WithKnowledgeContext(nil),
-			zep.WithUserDisplayName("Ava (Avagenc Agent)"),
-			zep.WithTimeHarnessFromContext(),
-		),
-		adksession.WithTimezoneFromContext(apitime.ContextKey),
+	avaSessSvc := zep.NewSessionService(zepClient, name,
+		zep.WithMessagesHistoryLength(conversationHistory),
+		zep.WithKnowledgeContext(nil),
+		zep.WithUserDisplayName("Ava (Avagenc Agent)"),
+		zep.WithTimeHarnessFromContext(apitime.ContextKey),
 	)
 
 	humanRunner, err := runner.New(runner.Config{
@@ -292,8 +285,8 @@ func main() {
 		r.Use(apises.HTTPWithID)
 		r.Use(apitime.HTTPWithZone)
 
-		r.Post("/chat", chat.Handle(humanRunner))
-		r.Post("/chat/agent", chat.Handle(avaRunner))
+		r.Post("/chat", chat.Handle(humanRunner, ""))
+		r.Post("/chat/agent", chat.Handle(avaRunner, "@zee "))
 	})
 
 	port := os.Getenv("PORT")

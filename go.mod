@@ -7,10 +7,10 @@ require (
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/joho/godotenv v1.5.1
-	go.naturallyfunny.dev/adk v1.5.0
+	go.naturallyfunny.dev/adk v1.11.2
 	go.naturallyfunny.dev/api v1.15.0
 	google.golang.org/adk v1.3.0
-	google.golang.org/genai v1.57.0
+	google.golang.org/genai v1.58.0
 )
 
 require (
