@@ -191,7 +191,7 @@ func main() {
 	if geminiAPIKey == "" {
 		log.Fatal("FATAL: GEMINI_API_KEY is required")
 	}
-	model, err := gemini.NewModel(ctx, "gemini-3.1-flash", &genai.ClientConfig{
+	model, err := gemini.NewModel(ctx, "gemini-3-flash-preview", &genai.ClientConfig{
 		APIKey: geminiAPIKey,
 	})
 	if err != nil {
@@ -234,14 +234,14 @@ func main() {
 	humanSessSvc := zep.NewSessionService(zepClient, name,
 		zep.WithMessagesHistoryLength(conversationHistory),
 		zep.WithKnowledgeContext(nil),
-		zep.WithUserDisplayName("Human (Avagenc User)"),
+		zep.WithUserDisplayName("Human"),
 		zep.WithTimeHarnessFromContext(apitime.ContextKey),
 	)
 
 	avaSessSvc := zep.NewSessionService(zepClient, name,
 		zep.WithMessagesHistoryLength(conversationHistory),
 		zep.WithKnowledgeContext(nil),
-		zep.WithUserDisplayName("Ava (Avagenc Agent)"),
+		zep.WithUserDisplayName("Ava"),
 		zep.WithTimeHarnessFromContext(apitime.ContextKey),
 	)
 
