@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	_ "embed"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,11 +11,8 @@ import (
 
 	_ "time/tzdata"
 
-	"github.com/avagenc/zee-agent/internal/account"
-	"github.com/avagenc/zee-agent/internal/chat"
-	"github.com/avagenc/zee-agent/internal/device"
-	"github.com/avagenc/zee-agent/internal/system"
-	"github.com/avagenc/zee-agent/internal/tuya"
+	"go.avagenc.com/zee/internal/chat"
+	"go.avagenc.com/zee/internal/system"
 
 	"github.com/getzep/zep-go/v3/client"
 	"github.com/getzep/zep-go/v3/option"
@@ -29,13 +25,15 @@ import (
 	"google.golang.org/adk/agent/llmagent"
 	"google.golang.org/adk/model/gemini"
 	"google.golang.org/adk/runner"
-	"google.golang.org/adk/tool"
-	"google.golang.org/adk/tool/functiontool"
 
+	adktuya "go.naturallyfunny.dev/adk/tuya"
 	"go.naturallyfunny.dev/adk/zep"
 	apises "go.naturallyfunny.dev/api/session"
 	apitime "go.naturallyfunny.dev/api/time"
 	apiuser "go.naturallyfunny.dev/api/user"
+	tuya "go.naturallyfunny.dev/tuya"
+	"go.naturallyfunny.dev/tuya/cloud"
+	tuyapg "go.naturallyfunny.dev/tuya/postgres"
 )
 
 //go:embed base-instruction.txt
@@ -120,71 +118,21 @@ func main() {
 	if tuyaBaseURL == "" {
 		log.Fatal("FATAL: TUYA_BASE_URL is required")
 	}
-	tuyaClient, err := tuya.NewClient(tuyaAccessID, tuyaAccessSecret, tuyaBaseURL)
+	tuyaCloudClient, err := cloud.New(tuyaAccessID, tuyaAccessSecret, tuyaBaseURL)
 	if err != nil {
-		log.Fatalf("FATAL: Failed to create Tuya client: %v", err)
+		log.Fatalf("FATAL: Failed to create Tuya cloud client: %v", err)
 	}
 
-	accountRepo := account.NewRepository(pgPool)
-	accountSvc := account.NewService(accountRepo)
-
-	deviceSvc := device.NewService(accountSvc.GetTuyaUID, tuyaClient)
-
-	getAccount, err := functiontool.New(
-		functiontool.Config{
-			Name:        "get_account",
-			Description: "Use this tool to retrieve the Tuya account linked to the current authenticated avagenc user.",
-		},
-		func(ctx tool.Context, args struct{}) (any, error) {
-			result, err := accountSvc.Get(ctx, ctx.UserID())
-			if err != nil {
-				fmt.Printf("[tool:get_account] error: %v\n", err)
-				return nil, err
-			}
-			return result, nil
-		},
-	)
+	tuyaAccountStore, err := tuyapg.NewAccountStore(ctx, pgPool)
 	if err != nil {
-		log.Fatalf("Failed to create get_account tool: %v", err)
+		log.Fatalf("FATAL: Failed to create Tuya account store: %v", err)
 	}
 
-	listDevices, err := functiontool.New(
-		functiontool.Config{
-			Name:        "list_devices",
-			Description: "Use this tool to retrieve all Tuya IoT devices linked to the linked user's Tuya account.",
-		},
-		func(ctx tool.Context, args struct{}) (map[string]any, error) {
-			result, err := deviceSvc.List(ctx, ctx.UserID())
-			if err != nil {
-				fmt.Printf("[tool:list_devices] error: %v\n", err)
-				return nil, err
-			}
-			return map[string]any{"devices": result}, nil
-		},
-	)
-	if err != nil {
-		log.Fatalf("Failed to create list_devices tool: %v", err)
-	}
+	tuyaAppClient := tuya.New(cloud.NewIoT(tuyaCloudClient), tuyaAccountStore)
 
-	sendCommandsToADevice, err := functiontool.New(
-		functiontool.Config{
-			Name:        "send_commands_to_a_device",
-			Description: `Use this tool to send commands to a device by the device "id". You can get "id" of devices from list_devices tool. Always pay attention to the "id" of the device, make sure you input the accurate device "id" or else it would be fatal. in string form but array of maps`,
-		},
-		func(ctx tool.Context, args struct {
-			DeviceID string             `json:"device_id"`
-			Commands []device.DataPoint `json:"commands"`
-		}) (any, error) {
-			result, err := deviceSvc.SendCommands(ctx, ctx.UserID(), args.DeviceID, args.Commands)
-			if err != nil {
-				fmt.Printf("[tool:send_commands_to_a_device] error: %v\n", err)
-				return nil, err
-			}
-			return result, nil
-		},
-	)
+	tuyaTools, err := adktuya.Tools(tuyaAppClient)
 	if err != nil {
-		log.Fatalf("Failed to create send_commands_to_a_device tool: %v", err)
+		log.Fatalf("FATAL: Failed to create Tuya tools: %v", err)
 	}
 
 	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
@@ -197,8 +145,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to assign Gemini model: %v", err)
 	}
-
-	tuyaTools := []tool.Tool{getAccount, listDevices, sendCommandsToADevice}
 
 	const name = "Zee"
 
@@ -269,7 +215,6 @@ func main() {
 	if appEnv == "" {
 		log.Fatal("FATAL: APP_ENV is required")
 	}
-	sys := system.NewHandler("zee-agent", "v0.2.0", appEnv)
 
 	r := chi.NewRouter()
 
@@ -278,7 +223,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Get("/", sys.Index)
+	r.Get("/", system.HandleIndex)
 
 	r.Group(func(r chi.Router) {
 		r.Use(apiuser.HTTPWithID)

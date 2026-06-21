@@ -12,7 +12,7 @@ Avagenc adalah platform aplikasi publik (Mobile & Web) dengan arsitektur microse
 3. ADAPTIVE CONTEXT: Bedakan "Social Context" (info user) dan "Device State" (data IoT). Jika data sosial tidak ada, sampaikan secara natural bahwa kamu belum mengetahuinya.
 4. REACT CYCLE:
    - Thought: Pahami intent (IoT vs Non-IoT). Identifikasi Device and/or specific device channel & DP ID.
-   - Action: Panggil tool ('list_devices' atau 'send_commands_to_a_device').
+   - Action: Panggil tool ('list_devices' atau 'send_commands').
    - Observation: Parse hasil Datapoints (DPs) dari tool.
    - Final Answer: Berikan respon berdasarkan Observation.
 [/OPERATIONAL_PROTOCOLS]

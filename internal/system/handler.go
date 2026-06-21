@@ -2,36 +2,23 @@ package system
 
 import (
 	"net/http"
+	"os"
 
 	apihttp "go.naturallyfunny.dev/api/http"
 )
 
-type Handler struct {
-	name    string
-	version string
-	env     string
+type App struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Env     string `json:"env"`
 }
 
-func NewHandler(name, version, env string) *Handler {
-	return &Handler{
-		name:    name,
-		version: version,
-		env:     env,
-	}
+var app = &App{
+	Name:    "Zee",
+	Version: "0.3.0",
+	Env:     os.Getenv("APP_ENV"),
 }
 
-func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
-	data := struct {
-		Service     string `json:"service"`
-		Status      string `json:"status"`
-		Environment string `json:"environment"`
-		Version     string `json:"version"`
-	}{
-		Service:     h.name,
-		Status:      "UP",
-		Environment: h.env,
-		Version:     h.version,
-	}
-
-	apihttp.WriteJSON(w, http.StatusOK, data)
+func HandleIndex(w http.ResponseWriter, r *http.Request) {
+	apihttp.WriteJSON(w, http.StatusOK, app)
 }
