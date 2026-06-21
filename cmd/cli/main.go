@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	_ "embed"
 	"log"
 	"os"
 	"time"
@@ -23,9 +22,6 @@ import (
 
 	zee "go.avagenc.com/zee"
 )
-
-//go:embed instruction.txt
-var devInstruction string
 
 // staticAccountStore links any ownerID to a fixed Tuya UID (DEV_TUYA_UID).
 // No postgres needed for local dev, and whatever user_id the session starts
@@ -73,12 +69,9 @@ func main() {
 		log.Fatalf("FATAL: gemini model: %v", err)
 	}
 
-	zeeAgent, err := zee.NewAgent(zee.Config{
-		Name:               "Zee",
-		Description:        "Avagenc Tuya Smart Home Agent — dev mode (CLI)",
-		ChannelInstruction: devInstruction,
-		Model:              model,
-		TuyaClient:         tuyaClient,
+	zeeAgent, err := zee.New(zee.Config{
+		Model:      model,
+		TuyaClient: tuyaClient,
 	})
 	if err != nil {
 		log.Fatalf("FATAL: zee agent: %v", err)

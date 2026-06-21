@@ -1,9 +1,10 @@
 # Zee
 
-Zee is the Avagenc Tuya smart-home agent, built on the [Google ADK](https://google.golang.org/adk)
-and a Gemini LLM. It ships as a **pure Go module** — there is no standalone
-service or HTTP API. You embed Zee into your own runner/session lifecycle, and
-the module gives you a configured agent wired to the Tuya device tools.
+Zee is the Avagenc Tuya smart-home agent, built on the [Google ADK](https://pkg.go.dev/google.golang.org/adk).
+It ships as a **pure Go module** — there is no standalone service or HTTP API.
+You embed Zee into your own runner/session lifecycle and supply an LLM plus a
+Tuya client; the module gives you a configured agent wired to the Tuya device
+tools.
 
 ```
 go get go.avagenc.com/zee
@@ -13,56 +14,49 @@ go get go.avagenc.com/zee
 
 ## Usage
 
-Zee exposes two constructors. Pick the one that matches how much of the
-lifecycle you want to own.
-
-### `zee.New` — agent + runner
-
-Returns a ready-to-use `*runner.Runner`. Zee wires the session service for you
-(`AutoCreateSession` is on).
+`zee.New` returns a configured `agent.Agent`. Running it — the runner and
+session lifecycle — is the consumer's responsibility. Zee's identity and
+system instruction are owned by the module; you supply only its dependencies.
 
 ```go
-r, err := zee.New(ctx, zee.Config{
-    Name:               "Zee",
-    AppName:            "avagenc",
-    Description:        "Avagenc Tuya smart-home agent",
-    ChannelInstruction: channelInstruction, // per-channel tone/behaviour
-    Model:              model,              // a google.golang.org/adk/model.LLM
-    Session:            sessionService,     // a google.golang.org/adk/session.Service
-    TuyaClient:         tuyaClient,         // a go.naturallyfunny.dev/tuya.Client
-})
-```
-
-### `zee.NewAgent` — agent only
-
-Returns the bare `agent.Agent`, without a runner or session service. Use this
-when the caller manages the session lifecycle itself — for example the ADK web
-launcher. `AppName` and `Session` are ignored here.
-
-```go
-a, err := zee.NewAgent(zee.Config{
-    Name:               "Zee",
-    Description:        "Avagenc Tuya smart-home agent",
-    ChannelInstruction: channelInstruction,
-    Model:              model,
-    TuyaClient:         tuyaClient,
+a, err := zee.New(zee.Config{
+    Model:      model,      // a google.golang.org/adk/model.LLM
+    TuyaClient: tuyaClient, // a go.naturallyfunny.dev/tuya.Client
 })
 ```
 
 ### Config
 
-| Field | Type | Used by | Description |
-|---|---|---|---|
-| `Name` | `string` | both | Agent name. |
-| `AppName` | `string` | `New` | App name passed to the runner. |
-| `Description` | `string` | both | Short agent description. |
-| `ChannelInstruction` | `string` | both | Per-channel instruction appended to Zee's base system instruction. |
-| `Model` | `model.LLM` | both | The LLM backing the agent (e.g. Gemini). |
-| `Session` | `session.Service` | `New` | Session service for the runner. |
-| `TuyaClient` | `*tuya.Client` | both | Tuya client; its device tools are exposed to the agent. |
+| Field | Type | Description |
+|---|---|---|
+| `Model` | `model.LLM` | The LLM backing the agent (e.g. Gemini). |
+| `TuyaClient` | `*tuya.Client` | Tuya client; its device tools are exposed to the agent. |
 
-The base system instruction is embedded from `internal/system-instruction.txt`;
-`ChannelInstruction` is appended to it at build time.
+The system instruction is embedded from `internal/system-instruction.txt`.
+
+### Per-channel / per-run instruction
+
+Zee ships one fixed identity and system instruction. Anything channel- or
+run-specific (tone, extra context) is the **consumer's** concern, added at the
+runner you own — the module exposes no hook for it. The idiomatic ADK way is a
+`BeforeModelCallback` that appends to the request's system instruction per run,
+registered as a plugin on your runner:
+
+```go
+p, _ := plugin.New(plugin.Config{
+    Name: "channel-instruction",
+    BeforeModelCallback: func(ctx agent.CallbackContext, req *model.LLMRequest) (*model.LLMResponse, error) {
+        // append channel-specific instruction to req for this run
+        return nil, nil
+    },
+})
+
+r, _ := runner.New(runner.Config{
+    Agent:          a, // the zee.New agent
+    SessionService: sessionService,
+    PluginConfig:   runner.PluginConfig{Plugins: []*plugin.Plugin{p}},
+})
+```
 
 ---
 
