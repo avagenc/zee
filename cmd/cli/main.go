@@ -16,7 +16,8 @@ import (
 	"go.naturallyfunny.dev/tuya/cloud"
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/cmd/launcher"
-	"google.golang.org/adk/cmd/launcher/full"
+	"google.golang.org/adk/cmd/launcher/console"
+	"google.golang.org/adk/cmd/launcher/universal"
 	"google.golang.org/adk/model/gemini"
 	"google.golang.org/adk/session"
 
@@ -27,8 +28,8 @@ import (
 var devInstruction string
 
 // staticAccountStore links any ownerID to a fixed Tuya UID (DEV_TUYA_UID).
-// No postgres needed for local dev, and whatever user_id you start the ADK web
-// session with is treated as linked.
+// No postgres needed for local dev, and whatever user_id the session starts
+// with is treated as linked.
 type staticAccountStore struct {
 	tuyaUID string
 }
@@ -74,7 +75,7 @@ func main() {
 
 	zeeAgent, err := zee.NewAgent(zee.Config{
 		Name:               "Zee",
-		Description:        "Avagenc Tuya Smart Home Agent — dev mode",
+		Description:        "Avagenc Tuya Smart Home Agent — dev mode (CLI)",
 		ChannelInstruction: devInstruction,
 		Model:              model,
 		TuyaClient:         tuyaClient,
@@ -88,8 +89,12 @@ func main() {
 		SessionService: session.InMemoryService(),
 	}
 
-	l := full.NewLauncher()
-	if err = l.Execute(ctx, config, []string{"web", "webui", "api"}); err != nil {
+	// console is ADK's CLI run mode (equivalent to Python's `adk run`).
+	// Prepend the "console" keyword so any extra flags (e.g. -streaming_mode)
+	// are forwarded to it.
+	l := universal.NewLauncher(console.NewLauncher())
+	args := append([]string{"console"}, os.Args[1:]...)
+	if err = l.Execute(ctx, config, args); err != nil {
 		log.Fatalf("FATAL: %v\n\n%s", err, l.CommandLineSyntax())
 	}
 }
