@@ -1,11 +1,12 @@
 module go.avagenc.com/zee
 
-go 1.25.1
+go 1.25.11
 
 require (
+	github.com/joho/godotenv v1.5.1
 	go.naturallyfunny.dev/adk v1.13.1
 	go.naturallyfunny.dev/tuya v0.3.0
-	google.golang.org/adk v1.3.0
+	google.golang.org/adk v1.4.0
 	google.golang.org/genai v1.58.0
 )
 
@@ -33,7 +34,6 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.7 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
-	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.42.0 // indirect
@@ -55,10 +55,10 @@ require (
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
-	google.golang.org/api v0.279.0 // indirect
+	google.golang.org/api v0.280.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260427160629-7cedc36a6bc4 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260511170946-3700d4141b60 // indirect
-	google.golang.org/grpc v1.81.0 // indirect
+	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	rsc.io/omap v1.2.0 // indirect
 	rsc.io/ordered v1.1.1 // indirect

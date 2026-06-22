@@ -15,8 +15,8 @@ import (
 var systemInstruction string
 
 const (
-	name        = "Zee"
-	description = "Avagenc Tuya smart-home agent"
+	name        = "zee"
+	description = "Avagenc Tuya Smart Agent"
 )
 
 // Config holds the dependencies a consumer must supply. Zee's identity and
