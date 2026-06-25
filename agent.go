@@ -11,13 +11,11 @@ import (
 	"google.golang.org/adk/model"
 )
 
-//go:embed internal/system-instruction.txt
-var systemInstruction string
+//go:embed internal/instruction.txt
+var instruction string
 
-const (
-	name        = "zee"
-	description = "Avagenc Tuya Smart Agent"
-)
+//go:embed internal/description.txt
+var description string
 
 // Config holds the dependencies a consumer must supply. Zee's identity and
 // system instruction are owned by the module, not configured here. Per-channel
@@ -36,10 +34,8 @@ func New(cfg Config) (agent.Agent, error) {
 		return nil, fmt.Errorf("zee: tuya tools: %w", err)
 	}
 
-	instruction := "[SYSTEM_INSTRUCTION]" + systemInstruction + "\n[/SYSTEM_INSTRUCTION]"
-
 	a, err := llmagent.New(llmagent.Config{
-		Name:        name,
+		Name:        "zee",
 		Model:       cfg.Model,
 		Tools:       tools,
 		Description: description,
