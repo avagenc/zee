@@ -11,11 +11,11 @@ import (
 	"google.golang.org/adk/model"
 )
 
-//go:embed internal/instruction.txt
-var instruction string
-
 //go:embed internal/description.txt
 var description string
+
+//go:embed internal/instruction.txt
+var systemInstruction string
 
 // Config holds the dependencies a consumer must supply. Zee's identity and
 // system instruction are owned by the module, not configured here. Per-channel
@@ -38,9 +38,9 @@ func New(cfg Config) (agent.Agent, error) {
 		return nil, fmt.Errorf("zee: tuya tools: %w", err)
 	}
 
-	inst := instruction
+	instruction := "[SYSTEM_INSTRUCTION]" + systemInstruction + "\n[/SYSTEM_INSTRUCTION]"
 	if cfg.AdditionalInstruction != "" {
-		inst = instruction + "\n\n" + cfg.AdditionalInstruction
+		instruction = "[SYSTEM_INSTRUCTION]" + systemInstruction + "\n\n" + cfg.AdditionalInstruction + "\n[/SYSTEM_INSTRUCTION]"
 	}
 
 	a, err := llmagent.New(llmagent.Config{
@@ -48,7 +48,7 @@ func New(cfg Config) (agent.Agent, error) {
 		Model:       cfg.Model,
 		Tools:       tools,
 		Description: description,
-		Instruction: inst,
+		Instruction: instruction,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("zee: agent: %w", err)
