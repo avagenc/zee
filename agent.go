@@ -24,6 +24,10 @@ var description string
 type Config struct {
 	Model      model.LLM
 	TuyaClient *tuya.Client
+	// AdditionalInstruction is appended to Zee's base system instruction.
+	// Use it to supply channel-specific or deployment-specific context that
+	// the module itself cannot know.
+	AdditionalInstruction string
 }
 
 // New builds the Zee agent — a Tuya smart-home LLM agent. Running it (runner,
@@ -34,12 +38,17 @@ func New(cfg Config) (agent.Agent, error) {
 		return nil, fmt.Errorf("zee: tuya tools: %w", err)
 	}
 
+	inst := instruction
+	if cfg.AdditionalInstruction != "" {
+		inst = instruction + "\n\n" + cfg.AdditionalInstruction
+	}
+
 	a, err := llmagent.New(llmagent.Config{
 		Name:        "zee",
 		Model:       cfg.Model,
 		Tools:       tools,
 		Description: description,
-		Instruction: instruction,
+		Instruction: inst,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("zee: agent: %w", err)
