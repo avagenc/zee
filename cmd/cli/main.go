@@ -31,10 +31,10 @@ type staticAccountStore struct {
 }
 
 func (s *staticAccountStore) Get(_ context.Context, ownerID string) (tuya.Account, error) {
-	return tuya.Account{OwnerID: ownerID, TuyaUID: s.tuyaUID, CreatedAt: time.Now(), UpdatedAt: time.Now()}, nil
+	return tuya.Account{Owner: ownerID, TuyaUID: s.tuyaUID, CreatedAt: time.Now(), UpdatedAt: time.Now()}, nil
 }
 func (s *staticAccountStore) Link(_ context.Context, ownerID, tuyaUID string) (tuya.Account, error) {
-	return tuya.Account{OwnerID: ownerID, TuyaUID: tuyaUID}, nil
+	return tuya.Account{Owner: ownerID, TuyaUID: tuyaUID}, nil
 }
 func (s *staticAccountStore) Unlink(_ context.Context, _ string) error { return nil }
 
