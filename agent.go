@@ -4,7 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 
-	adktuya "go.naturallyfunny.dev/adk/tuya"
+	adktuya "go.naturallyfunny.dev/agentkit/tuya/adk"
 	tuya "go.naturallyfunny.dev/tuya"
 	"google.golang.org/adk/agent"
 	"google.golang.org/adk/agent/llmagent"
